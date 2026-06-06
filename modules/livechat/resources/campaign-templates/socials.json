@@ -1,0 +1,51 @@
+{
+  "name": "socials",
+  "label": "Increase social engagement",
+  "width": 240,
+  "height": 198,
+  "conditions": [
+    {
+      "name": "isFirstTimeVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnCurrentPage",
+      "value": "15",
+      "operator": "gt",
+      "match_type": "all"
+    },
+    {
+      "name": "neverInteractedWithWidget",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "numberOfViewedPages",
+      "value": "2",
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {
+      "id": "gU3EkQ",
+      "name": "text",
+      "value": {
+        "text": "<p><span>Follow us on socials!</span></p><p><span>Stay connected with us for the latest updates.</span></p>"
+      }
+    },
+    {
+      "id": "_waoZY",
+      "name": "button",
+      "value": {"label": "Instagram", "variant": "outline"}
+    },
+    {
+      "id": "pkEKy9",
+      "name": "button",
+      "value": {"label": "Facebook", "variant": "outline"}
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Widget - Group Routing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Widget Group Routing Test</h1>
+    
+    <div class="info">
+        <h2>Test Configuration</h2>
+        <p>This page is configured with <code>groupId: 1</code></p>
+        <p>When you start a chat on this page, the conversation should be assigned to group ID 1.</p>
+    </div>
+
+    <div class="info">
+        <h2>How to Test</h2>
+        <ol>
+            <li>Make sure you have at least one group created in the admin panel (Settings > Team > Groups)</li>
+            <li>Note the ID of the group you want to test with</li>
+            <li>Update the <code>groupId</code> value in the script below to match your test group ID</li>
+            <li>Open this page and start a chat</li>
+            <li>Check the conversation in the admin panel - it should be assigned to the specified group</li>
+        </ol>
+    </div>
+
+    <div class="info">
+        <h2>Testing Different Groups</h2>
+        <p>Create multiple copies of this file with different <code>groupId</code> values to test routing to different groups:</p>
+        <ul>
+            <li><code>test-group-widget-1.html</code> - groupId: 1</li>
+            <li><code>test-group-widget-2.html</code> - groupId: 2</li>
+            <li><code>test-group-widget-3.html</code> - groupId: 3</li>
+        </ul>
+    </div>
+
+<!-- <script>
+  window.BeChatSettings = {
+    widgetDomain: "http://127.0.0.1:8000/livechat-loader.js",
+    department: 2
+  };
+</script>
+
+<script src="http://127.0.0.1:8000/livechat-loader.js"></script> -->
+</body>
+</html>

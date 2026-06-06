@@ -1,0 +1,2 @@
+import{z as e,j as r,o as s}from"./client-j9nNowi7.js";const o=t=>{switch(t){case e.locked:return{bg:"bg-chip",text:"text-chip",button:"chip"};case e.pending:return{bg:"bg-danger",text:"text-danger",button:"danger"};case e.closed:return{bg:"bg-positive",text:"text-positive",button:"positive"};default:return{bg:"bg-primary",text:"text-primary",button:"primary"}}};function n({category:t}){return r.jsx("div",{className:s("h-8 w-8 rounded-full",o(t).bg)})}export{n as S,o as g};
+//# sourceMappingURL=get-status-color-BF7iQyw_.js.map

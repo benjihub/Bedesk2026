@@ -1,0 +1,4 @@
+**/routes/*.php
+resources/demo/demo-article-body.html
+common/foundation/resources/defaults/*.html
+*.min.css

@@ -1,0 +1,70 @@
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-muted/50;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror {
+  min-height: inherit;
+  outline-style: none;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.ProseMirror img.ProseMirror-selectednode,
+.ProseMirror iframe.ProseMirror-selectednode {
+  @apply rounded ring ring-primary-light;
+}
+
+.prose [data-indent='1'] {
+  @apply pl-20;
+}
+.prose [data-indent='2'] {
+  @apply pl-40;
+}
+.prose [data-indent='3'] {
+  @apply pl-60;
+}
+.prose [data-indent='4'] {
+  @apply pl-80;
+}
+.prose [data-indent='5'] {
+  @apply pl-100;
+}
+.prose [data-indent='6'] {
+  @apply pl-128;
+}
+
+.prose iframe {
+  @apply aspect-video w-full;
+}
+
+.info-block {
+  @apply my-24 max-w-full break-words rounded-panel border border-positive/20 bg-positive/selected p-16 text-sm leading-6;
+  & > :first-child {
+    margin-top: 0;
+  }
+  & > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+.info-block .title {
+  @apply text-base font-medium text-[#43484d];
+}
+
+.info-block.important {
+  @apply border-warning/20 bg-warning/selected;
+}
+
+.info-block.warning {
+  @apply border-danger/20 bg-danger/selected;
+}
+
+.info-block p {
+  @apply mb-0 mt-6;
+}

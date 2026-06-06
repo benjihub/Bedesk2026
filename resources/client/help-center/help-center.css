@@ -1,0 +1,79 @@
+.custom-page-body p:empty:before {
+  content: '';
+  display: inline-block;
+}
+
+.hc-grid {
+  display: grid;
+  grid-template-areas:
+    'navbar navbar navbar'
+    'sidenav-left content sidenav-right';
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 1fr minmax(auto, 802px) 1fr;
+}
+
+.article-body .tsd-is-private {
+  @apply hidden;
+}
+
+.article-body .tsd-anchor {
+  @apply block h-0;
+}
+
+.article-body .tsd-panel-group {
+  @apply mb-40;
+}
+
+.article-body .tsd-panel {
+  @apply mb-24 rounded border p-16;
+}
+
+.article-body .tsd-panel ul.tsd-signatures,
+.tsd-panel ul.tsd-descriptions {
+  @apply list-none pl-0;
+
+  > li {
+    @apply m-0 list-none;
+  }
+}
+
+.article-body .tsd-panel .tsd-sources {
+  @apply hidden;
+}
+
+.article-body .tsd-panel ul.tsd-parameters {
+  @apply mb-24 list-disc pl-40;
+}
+
+.article-body .tsd-panel .tsd-signature-type,
+.article-body .tsd-panel .tsd-signature-symbol {
+  @apply font-mono font-normal italic;
+}
+
+.article-body .tsd-panel .tsd-kind-method {
+  @apply m-0 border-y py-14 font-mono text-sm;
+}
+
+.article-body .tsd-panel .tsd-comment {
+  @apply mb-28 mt-14 text-sm;
+}
+
+.article-body .tsd-panel .ts-flagDefault {
+  @apply hidden;
+}
+
+.article-body .tsd-panel h3 {
+  @apply mb-18 text-lg font-semibold text-primary;
+}
+
+.article-body .tsd-panel h4 {
+  @apply text-sm font-semibold;
+}
+
+.article-body .tsd-panel h5 {
+  @apply py-4 text-sm font-semibold;
+}
+
+.article-body .tsd-panel a {
+  @apply pointer-events-none text-inherit;
+}

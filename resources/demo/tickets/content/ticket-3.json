@@ -1,0 +1,53 @@
+[
+  {
+    "author": "user",
+    "body": "Hi, I'm trying to upload a PDF document to my profile, but I keep getting an error that says 'Unsupported file type'. The file is a standard PDF and under the size limit, so I’m not sure what’s going wrong.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Hi! Thanks for reaching out. Sorry you're having trouble uploading your file. Could you let me know which browser and device you're using? Also, can you send us the file you're trying to upload so we can test it on our end?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Sure, I’m using Google Chrome on Windows 10. I’ve attached the PDF file I was trying to upload so you can take a look.",
+    "type": "message",
+    "hasAttachments": true
+  },
+  {
+    "author": "agent",
+    "body": "Thanks for the info and the file. I tested the upload with your document and was able to replicate the issue. It looks like our upload service is rejecting PDFs with certain metadata settings. I’ve escalated this to our engineering team.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "author": "user",
+    "body": "I see, thanks for investigating. Is there any workaround in the meantime? I need to get this document uploaded today for a job application.",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "Yes, in the meantime you can open the file in Adobe Acrobat and use 'Save As' to generate a new copy—it removes the problematic metadata. That version should upload without issues.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "That workaround did the trick! I was able to upload the file successfully after re-saving it. Thanks for the quick help.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

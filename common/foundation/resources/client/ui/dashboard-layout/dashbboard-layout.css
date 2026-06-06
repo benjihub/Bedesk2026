@@ -1,0 +1,54 @@
+.dashboard-grid {
+  display: grid;
+  grid-template-areas:
+    'navbar navbar navbar navbar navbar'
+    'sidenav-left sidenav-left-2 sidenav-left-3 header header'
+    'sidenav-left sidenav-left-2 sidenav-left-3 content sidenav-right'
+    'footer footer footer footer footer';
+  grid-template-rows: auto auto 1fr;
+  grid-template-columns: auto auto auto 1fr auto;
+}
+
+.dashboard-grid-content {
+  grid-area: content;
+}
+
+.dashboard-grid-header {
+  grid-area: header;
+}
+
+.dashboard-grid-navbar {
+  grid-area: navbar;
+}
+
+.dashboard-grid-sidenav-left {
+  grid-area: sidenav-left;
+}
+
+.dashboard-grid-sidenav-left-2 {
+  grid-area: sidenav-left-2;
+}
+
+.dashboard-grid-sidenav-left-3 {
+  grid-area: sidenav-left-3;
+}
+
+.dashboard-grid-sidenav-right {
+  grid-area: sidenav-right;
+}
+
+.dashboard-grid-footer {
+  grid-area: footer;
+}
+
+.dashboard-grid:not(.dashboard-mobile-mode) .dashboard-rounded-panel {
+  @apply rounded-panel border;
+}
+
+.dashboard-grid .dashboard-rounded-panel {
+  @apply h-full min-h-0 min-w-0 bg-elevated;
+}
+
+.dashboard-layout-with-spacing:not(.dashboard-mobile-mode) {
+  @apply bg-alt py-8 pr-8 dark:bg;
+}

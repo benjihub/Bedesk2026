@@ -1,0 +1,138 @@
+[
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Hello, I need assistance with canceling my subscription. How can I do that?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Hi! I’m sorry to hear you want to cancel. May I ask if there’s anything we can do to improve your experience?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "No, it's not the service. I just don't need it anymore."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Understood. To cancel your subscription, please go to your account settings and select 'Subscription & Billing.' You should see an option to cancel your subscription there."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I found it. It's asking if I want to pause instead of canceling. What's the difference?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Good question! Pausing your subscription allows you to keep your data and settings intact without being charged. You can reactivate your account anytime. Canceling will delete your account data permanently."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I think I'd rather cancel. I don't plan on using it again."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Got it. If you’re sure, you can proceed by selecting 'Cancel Subscription.' You’ll be asked to confirm your decision."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.idle"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I’ve canceled it. By the way, I need to keep some of my invoices for my records. I’ve attached them here. Could you confirm if there's any other way to download them after my account is deactivated?",
+    "hasAttachments": true
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Yes, I see the attachments. Once your account is deactivated, you won't be able to access them through the platform. However, I recommend downloading any invoices or important data you need before the end of your billing cycle. Let me know if you need help with that."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I'll go ahead and download everything now. Thanks for the heads-up."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "You're welcome! If you need a step-by-step guide to download your invoices, I can provide that as well."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "That would be great, actually. I want to make sure I get everything."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Sure! To download your invoices, go to the 'Billing History' section under 'Subscription & Billing.' You'll see a list of all your invoices. Click on each one to download it as a PDF."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Got it. Is there a way to download all invoices at once?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Currently, invoices have to be downloaded individually. I understand it can be a bit time-consuming. If you'd like, I can pass this feedback along to our development team."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "That would be helpful. Bulk download would make things easier."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Hello again! Just stepping in to follow up on your request. Were you able to download your invoices?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Yes, I managed to download all of them. Thanks for your patience."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Glad to hear that! If there's anything else you need, feel free to reach out. And thank you for your feedback about the bulk download feature."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "You're welcome. Thanks for all the help!"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "You're very welcome! We're here if you ever decide to return. Have a wonderful day!"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.leftChat"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

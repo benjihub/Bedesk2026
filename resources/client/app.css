@@ -1,0 +1,39 @@
+@import '../../common/foundation/resources/client/core/common.css';
+@import 'help-center/help-center.css';
+@import 'help-center/tickets-portal/ticket-page/customer-ticket-page-layout.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.inbox-views-sidebar {
+  transform-origin: left;
+  grid-area: sidenav-left-2;
+  width: 240px;
+}
+
+.inbox-conversation-list {
+  grid-area: sidenav-left-3;
+  min-width: 270px;
+  max-width: 460px;
+  width: 32vw;
+
+  &.compact {
+    width: calc(32vw - 240px);
+  }
+}
+
+.animated-chat-message {
+  animation: chatMessageAnimation 0.125s ease;
+}
+
+@keyframes chatMessageAnimation {
+  0% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}

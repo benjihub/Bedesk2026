@@ -1,0 +1,51 @@
+{
+  "name": "discount",
+  "label": "Offer a discount",
+  "width": 240,
+  "height": 313.5,
+  "conditions": [
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnCurrentPage",
+      "value": "60",
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {
+      "id": "kK9Lh7",
+      "name": "image",
+      "value": {
+        "size": "stretch",
+        "radius": "none",
+        "width": 480,
+        "height": 315,
+        "url": "images/campaigns/discount.png"
+      }
+    },
+    {
+      "id": "VB7-OK",
+      "name": "text",
+      "value": {
+        "text": "<h2>See something you like? \ud83d\udc40</h2><p></p><p>Enjoy 10% off your first order with this discount code:</p>"
+      }
+    },
+    {
+      "id": "MNeFRn",
+      "name": "button",
+      "value": {
+        "label": "Copy code",
+        "action": "copyToClipboard",
+        "actionValue": "10OFFSUMMER",
+        "variant": "flat",
+        "size": "sm"
+      }
+    }
+  ]
+}

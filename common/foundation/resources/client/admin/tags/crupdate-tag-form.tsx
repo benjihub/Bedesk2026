@@ -1,0 +1,61 @@
+import {Form} from '@ui/forms/form';
+import {FormTextField} from '@ui/forms/input-field/text-field/text-field';
+import {Item} from '@ui/forms/listbox/item';
+import {FormSelect} from '@ui/forms/select/select';
+import {Trans} from '@ui/i18n/trans';
+import {useContext} from 'react';
+import {UseFormReturn} from 'react-hook-form';
+import {SiteConfigContext} from '../../core/settings/site-config-context';
+import {Tag} from '../../tags/tag';
+
+interface CrupdateTagFormProps {
+  onSubmit: (values: Partial<Tag>) => void;
+  formId: string;
+  form: UseFormReturn<Partial<Tag>>;
+}
+export function CrupdateTagForm({
+  form,
+  onSubmit,
+  formId,
+}: CrupdateTagFormProps) {
+  const {
+    tags: {types},
+  } = useContext(SiteConfigContext);
+  const watchedType = form.watch('type');
+  const isSystem = !!types.find(t => t.name === watchedType && t.system);
+
+  const allTypes = types.filter(t => !t.system);
+
+  return (
+    <Form id={formId} form={form} onSubmit={onSubmit}>
+      <FormTextField
+        name="name"
+        label={<Trans message="Name" />}
+        description={<Trans message="Unique tag identifier." />}
+        className="mb-20"
+        required
+        autoFocus
+      />
+      <FormTextField
+        name="display_name"
+        label={<Trans message="Display name" />}
+        description={<Trans message="User friendly tag name." />}
+        className="mb-20"
+      />
+      {allTypes.length > 1 && (
+        <FormSelect
+          label={<Trans message="Type" />}
+          name="type"
+          selectionMode="single"
+          disabled={isSystem}
+        >
+          {allTypes.map(type => (
+            <Item key={type.name} value={type.name}>
+              <Trans message={type.name} />
+            </Item>
+          ))}
+        </FormSelect>
+      )}
+    </Form>
+  );
+}

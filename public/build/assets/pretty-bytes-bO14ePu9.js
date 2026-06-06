@@ -1,0 +1,2 @@
+function s(t,B=1){if(t==null||Number.isNaN(t))return"";const e=t<0,o=["B","KB","MB","GB","TB","PB","EB","ZB","YB"];if(e&&(t=-t),t<1)return`${(e?"-":"")+t} B`;const r=Math.min(Math.floor(Math.log(t)/Math.log(1024)),o.length-1);t=Number(t/Math.pow(1024,r));const i=o[r];return t>=10||t%1===0?`${(e?"-":"")+t.toFixed(0)} ${i}`:`${(e?"-":"")+t.toFixed(B)} ${i}`}export{s as p};
+//# sourceMappingURL=pretty-bytes-bO14ePu9.js.map

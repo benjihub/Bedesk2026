@@ -1,0 +1,16 @@
+import {LucideIconWrapper} from '@ui/icons/lucide/lucide-icon-wrapper';
+import {SvgIconProps} from '@ui/icons/svg-icon';
+import {forwardRef} from 'react';
+
+export const ChatbotIcon = forwardRef<SVGSVGElement, SvgIconProps>(
+  (props, ref) => (
+    <LucideIconWrapper {...props} ref={ref}>
+      <path d="M12 6V2H8" />
+      <path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z" />
+      <path d="M2 12h2" />
+      <path d="M9 11v2" />
+      <path d="M15 11v2" />
+      <path d="M20 12h2" />
+    </LucideIconWrapper>
+  ),
+);

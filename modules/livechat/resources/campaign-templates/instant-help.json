@@ -1,0 +1,63 @@
+{
+  "name": "instant-help",
+  "label": "Offer instant help",
+  "width": 240,
+  "height": 288,
+  "conditions": [
+    {
+      "name": "timeOnCurrentPage",
+      "value": "30",
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {"id": "wM0f_u", "name": "agent", "value": {"agentId": 0}},
+    {
+      "id": "617Zt0",
+      "name": "text",
+      "value": {"text": "<p><span>Need help or have a question?</span></p>"}
+    },
+    {
+      "id": "vsemdM",
+      "name": "button",
+      "value": {
+        "label": "Track order",
+        "action": "sendMessage",
+        "actionValue": "How do I track my order?",
+        "variant": "outline"
+      }
+    },
+    {
+      "id": "0gv-eE",
+      "name": "button",
+      "value": {
+        "label": "Shipping cost",
+        "action": "sendMessage",
+        "actionValue": "What is the cost of shipping?",
+        "color": "primary",
+        "variant": "outline"
+      }
+    },
+    {
+      "id": "NrJ56P",
+      "name": "button",
+      "value": {
+        "label": "Return policy",
+        "action": "sendMessage",
+        "actionValue": "What is your return policy?",
+        "variant": "outline"
+      }
+    },
+    {
+      "id": "sG3rvJ",
+      "name": "button",
+      "value": {
+        "label": "Discounts",
+        "action": "sendMessage",
+        "actionValue": "Do you have any discounts currently?",
+        "variant": "outline"
+      }
+    }
+  ]
+}

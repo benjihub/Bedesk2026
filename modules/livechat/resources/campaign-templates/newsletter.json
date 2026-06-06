@@ -1,0 +1,45 @@
+{
+  "name": "newsletter",
+  "label": "Increase your newsletter subscriptions",
+  "width": 300,
+  "height": 191,
+  "conditions": [
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "neverInteractedWithWidget",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnAllPages",
+      "value": 30,
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {"id": "XpFjUS", "name": "agent", "value": {"agentId": 0}},
+    {
+      "id": "7t4O6A",
+      "name": "text",
+      "value": {
+        "text": "<p>Hey, want to find out what goes on behind closed doors at Acme?</p><p>Sign up to our newsletter here \ud83d\udc47</p>"
+      }
+    },
+    {
+      "id": "8YvEXM",
+      "name": "button",
+      "value": {
+        "label": "Sign up",
+        "action": "openEmbed",
+        "actionValue": "https://google.com"
+      }
+    }
+  ]
+}

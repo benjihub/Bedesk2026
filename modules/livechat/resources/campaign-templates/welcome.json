@@ -1,0 +1,68 @@
+{
+  "name": "welcome",
+  "label": "Welcome new visitors",
+  "width": 240,
+  "height": 326,
+  "conditions": [
+    {
+      "name": "timeOnCurrentPage",
+      "value": "1",
+      "operator": "gt",
+      "match_type": "all"
+    },
+    {
+      "name": "neverInteractedWithWidget",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {
+      "id": "1K9a1r",
+      "name": "image",
+      "value": {
+        "size": "stretch",
+        "url": "images/campaigns/welcome.gif",
+        "radius": "none",
+        "width": 460,
+        "height": 300
+      }
+    },
+    {
+      "id": "aVlxkS",
+      "name": "text",
+      "value": {
+        "text": "<p>Hi, let us know if you have any questions.</p>"
+      }
+    },
+    {
+      "id": "FZ92b8",
+      "name": "button",
+      "value": {
+        "label": "Chat now",
+        "variant": "flat",
+        "size": "xs",
+        "color": "primary",
+        "action": "sendMessage",
+        "actionValue": "Hello, I have a question."
+      }
+    },
+    {
+      "id": "w5M__n",
+      "name": "button",
+      "value": {
+        "label": "No, thanks",
+        "action": "dismiss",
+        "color": null,
+        "variant": "outline",
+        "size": "xs"
+      }
+    },
+    {
+      "id": "8HmToF",
+      "name": "messageInput",
+      "value": {"placeholder": "Write a message..."}
+    }
+  ]
+}

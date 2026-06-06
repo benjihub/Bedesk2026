@@ -1,0 +1,44 @@
+{
+  "name": "new-feature",
+  "label": "Announce a new feature",
+  "width": 240,
+  "height": 156,
+  "conditions": [
+    {
+      "name": "timeOnCurrentPage",
+      "value": "15",
+      "operator": "gt",
+      "match_type": "all"
+    },
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "neverInteractedWithWidget",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {
+      "id": "Qwyg0S",
+      "name": "text",
+      "value": {
+        "text": "<p>Hello! \ud83d\udc4b</p><p>We have just released a great new feature.</p>"
+      }
+    },
+    {
+      "id": "hhyP6-",
+      "name": "button",
+      "value": {
+        "label": "View details",
+        "action": "openUrl",
+        "actionValue": "https://google.com"
+      }
+    }
+  ]
+}

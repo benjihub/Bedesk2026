@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@ui/*": ["common/foundation/resources/client/ui/library/*"],
+      "@livechat/*": ["modules/livechat/resources/client/*"],
+      "@ai/*": ["modules/ai/resources/client/*"],
+      "@envato/*": ["modules/envato/resources/client/*"],
+      "@common/*": ["common/foundation/resources/client/*"],
+      "@app/*": ["resources/client/*"]
+    },
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": false,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "ignoreDeprecations": "5.0"
+  },
+  "include": [
+    "resources/client",
+    "common/foundation/resources/client",
+    "modules/helpdesk/resources/client",
+    "modules/envato/resources/client",
+    "modules/livechat/resources/client",
+    "modules/ai/resources/client"
+  ],
+  "exclude": [
+    "*.stories.tsx",
+    "common/foundation/resources/client/admin/channels/*"
+  ],
+  "references": [{"path": "./tsconfig.node.json"}]
+}

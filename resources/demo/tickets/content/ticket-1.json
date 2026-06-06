@@ -1,0 +1,68 @@
+[
+  {
+    "author": "user",
+    "body": "Hi there, I'm reaching out because I'm having trouble logging into my account. Every time I try to sign in, I get an 'Invalid password' error message, even though I'm entering the same password I’ve always used. I’ve double-checked for typos and even copied it from my password manager, but no luck so far.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Hi there! I'm sorry you're experiencing issues logging in. Could you please confirm the email address associated with your account?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Absolutely, the email address tied to my account is johndoe@example.com. I’ve had the account for a couple of years now and haven’t changed the password recently, which makes this issue really confusing.",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "Thanks, John. I’ve checked your account, and it looks like there were several failed login attempts. Just to confirm, are you using any special characters in your password?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Yes, my password includes a few special characters like the @ and # symbols. I thought that might be causing problems, but I’ve used this same password successfully before, including just a few days ago. I've attached a screenshot of the error message I'm seeing during login.",
+    "type": "message",
+    "hasAttachments": true
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Understood. Sometimes certain browsers or autofill tools can interfere. Can you try typing the password manually in a private/incognito window?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Thanks for the suggestion. I just tried logging in using a private browser window and made sure to enter the password manually instead of using autofill. Unfortunately, I’m still getting the same error message saying the password is invalid.",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "Thanks for trying that. I'm going to send you a password reset link to your email. Please check your inbox and follow the instructions.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "I received the reset email, followed the link, and created a new password. I was then able to log in successfully without any issues. Really appreciate how quickly you helped resolve this!",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "You're welcome, John! I'm glad it worked. Let us know if you need anything else.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

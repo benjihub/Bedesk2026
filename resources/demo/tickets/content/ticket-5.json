@@ -1,0 +1,53 @@
+[
+  {
+    "author": "user",
+    "body": "Hi, I placed an order over a week ago and it was marked as delivered yesterday, but I haven’t received anything. I’ve checked around my building and with neighbors, but there’s no sign of the package. Can you help me locate it?",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Hello! I’m sorry to hear your package hasn’t arrived. I’ll look into this for you. Could you please confirm your order number and the shipping address used for the order?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Sure, the order number is #48392017. The shipping address was 456 North Elm Street, Apt 5C, Springfield. I’ve also attached a screenshot of the delivery confirmation email I received, just in case it helps.",
+    "type": "message",
+    "hasAttachments": true
+  },
+  {
+    "author": "agent",
+    "body": "Thank you for the details. I checked with the carrier and they confirmed the package was delivered to the front doorstep. Sometimes packages are marked delivered prematurely or get misplaced. I’ve started a trace request with the carrier on your behalf.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "author": "user",
+    "body": "I appreciate that. Just to clarify, if the package isn’t found, will I be eligible for a replacement or refund?",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "Yes, if the carrier is unable to locate the package within 48 hours, we’ll go ahead and offer you a replacement or full refund—whichever you prefer. We’ll follow up with you as soon as the trace is completed.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Sounds good. I’ll wait to hear back. Thanks for being on top of this!",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

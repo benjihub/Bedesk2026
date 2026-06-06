@@ -1,0 +1,88 @@
+import {billingQueries} from '@common/billing/billing-queries';
+import {loadScript} from '@paypal/paypal-js';
+import {useQuery} from '@tanstack/react-query';
+import {useSettings} from '@ui/settings/use-settings';
+import {useEffect, useRef, useState} from 'react';
+
+interface UsePaypalProps {
+  productId?: string;
+  priceId?: string;
+}
+export function usePaypal({productId, priceId}: UsePaypalProps) {
+  const {data} = useQuery(billingQueries.products.index());
+  const paypalLoadStarted = useRef<boolean>(false);
+  const paypalButtonsRendered = useRef<boolean>(false);
+  const [paypalIsLoaded, setPaypalIsLoaded] = useState(false);
+  const paypalElementRef = useRef<HTMLDivElement>(null);
+  const {
+    base_url,
+    billing: {
+      stripe: {enable: stripeEnabled},
+      paypal: {enable: paypalEnabled, public_key},
+    },
+  } = useSettings();
+
+  useEffect(() => {
+    if (!paypalEnabled || !public_key || paypalLoadStarted.current) return;
+    loadScript({
+      clientId: public_key,
+      intent: 'subscription',
+      vault: true,
+      disableFunding: stripeEnabled ? 'card' : undefined,
+    }).then(() => {
+      setPaypalIsLoaded(true);
+    });
+    paypalLoadStarted.current = true;
+  }, [public_key, paypalEnabled, stripeEnabled]);
+
+  useEffect(() => {
+    if (
+      !paypalIsLoaded ||
+      !window.paypal?.Buttons ||
+      !paypalElementRef.current ||
+      !data?.products.length ||
+      !productId ||
+      !priceId ||
+      paypalButtonsRendered.current
+    )
+      return;
+
+    const product = data.products.find(p => p.id === parseInt(productId));
+    const price = product?.prices.find(p => p.id === parseInt(priceId));
+
+    window.paypal
+      .Buttons({
+        style: {
+          label: 'pay',
+        },
+        createSubscription: (data, actions) => {
+          return actions.subscription.create({
+            application_context: {
+              shipping_preference: 'NO_SHIPPING',
+              return_url: `${base_url}/checkout/${productId}/${priceId}/paypal/done?subscriptionId=${data.subscriptionID}&status=success`,
+              cancel_url: `${base_url}/checkout/${productId}/${priceId}/paypal/done?status=error`,
+            },
+            plan_id: price?.paypal_id!,
+          });
+        },
+        onApprove: (data, actions) => {
+          actions.redirect(
+            `${base_url}/checkout/${productId}/${priceId}/paypal/done?subscriptionId=${data.subscriptionID}&status=success`,
+          );
+          return Promise.resolve();
+        },
+        onError: e => {
+          location.href = `${base_url}/checkout/${productId}/${priceId}/paypal/done?status=error`;
+        },
+      })
+      .render(paypalElementRef.current)
+      .then(() => {
+        paypalButtonsRendered.current = true;
+      });
+  }, [productId, priceId, data, paypalIsLoaded, base_url]);
+
+  return {
+    paypalElementRef,
+    stripeIsEnabled: public_key != null && paypalEnabled,
+  };
+}

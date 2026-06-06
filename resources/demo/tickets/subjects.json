@@ -1,0 +1,31 @@
+[
+  [
+    "Unable to Access Account – Password Rejected",
+    "Login Fails Despite Correct Password",
+    "Locked Out of My Account – Assistance Needed"
+  ],
+
+  [
+    "Charged Twice for My Monthly Plan",
+    "Duplicate Payment Detected on My Account",
+    "Request for Refund Due to Double Billing"
+  ],
+
+  [
+    "PDF Upload Failing with Error Message",
+    "Cannot Upload Report to Profile Page",
+    "File Rejected Despite Meeting Requirements"
+  ],
+
+  [
+    "Need Access to Data After Account Deactivation",
+    "Recover Deleted Account for Report Download",
+    "Restore Account to Retrieve Past Files"
+  ],
+
+  [
+    "Package Marked Delivered But Missing",
+    "Order #48392017 Not Received Despite Delivery Notice",
+    "Help Locating Lost or Misdelivered Package"
+  ]
+]

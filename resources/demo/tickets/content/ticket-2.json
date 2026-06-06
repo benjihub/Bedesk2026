@@ -1,0 +1,58 @@
+[
+  {
+    "author": "user",
+    "body": "Hello, I noticed that I was charged twice for my subscription this month. I received two identical receipts from your billing system. Can you please help me understand what happened and how to get a refund for the duplicate charge?",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Hi! Thanks for contacting support. I'm sorry to hear about the duplicate charge. Could you please provide the last four digits of the card used and a screenshot of both receipts so I can investigate further?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Sure, the last four digits of my card are 3289. I’ve attached screenshots of both receipts to this message so you can see the duplicate charges.",
+    "type": "message",
+    "hasAttachments": true
+  },
+  {
+    "author": "agent",
+    "body": "Thanks for that information. I’ve reviewed your billing history and can confirm that a duplicate charge occurred due to a processing error. I’ve submitted a refund request for the extra charge—it should appear on your account within 5–7 business days.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "author": "user",
+    "body": "Thanks for confirming and processing the refund so quickly. Do I need to do anything else on my end, or is everything settled now?",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "You're all set—no action needed on your part. Just keep an eye on your bank account over the next few days. If you don’t see the refund by then, feel free to reach out again.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Perfect. I’ll keep an eye out. Thanks again for the fast resolution!",
+    "type": "message"
+  },
+  {
+    "author": "agent",
+    "body": "Happy to help! Have a great day, and don’t hesitate to contact us if you need anything else.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

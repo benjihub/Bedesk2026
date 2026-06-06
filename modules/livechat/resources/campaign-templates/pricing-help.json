@@ -1,0 +1,41 @@
+{
+  "name": "pricing-help",
+  "label": "Offer help on pricing page",
+  "width": 240,
+  "height": 188,
+  "conditions": [
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnCurrentPage",
+      "value": 5,
+      "operator": "gt",
+      "match_type": "all"
+    },
+    {
+      "name": "currentPageUrl",
+      "value": "pricing",
+      "operator": "contains",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {"id": "rv2VJI", "name": "agent", "value": {"agentId": 891}},
+    {
+      "id": "XvQAxy",
+      "name": "messageInput",
+      "value": {"placeholder": "Write a message..."}
+    },
+    {
+      "id": "KNO1L6",
+      "name": "text",
+      "value": {
+        "text": "<p>Welcome back \ud83d\udc4b</p><p>If you have any questions about our pricing, I\u2019m here to help! \ud83d\ude42</p>"
+      }
+    }
+  ]
+}

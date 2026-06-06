@@ -1,0 +1,143 @@
+[
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Hi, I'm having trouble logging into my account. Can you help?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Sure! Can you tell me if you're getting any error messages when you try to log in?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Yes, it says 'Incorrect password,' but I’m sure my password is right."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "No worries. It might be a case of a typo or a saved password issue. Could you try resetting your password using the 'Forgot Password' link on the login page?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I already tried that. I didn't receive the password reset email."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Let's check if the email is getting filtered into your spam or junk folder. Could you take a look there?"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I've checked, and it's not there."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Alright, let's try another method. I can manually trigger a password reset email for you. Please give me a moment."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Hi, just taking over your request. I've manually triggered the password reset email. It should arrive in your inbox shortly."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I got the email now. Resetting the password..."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Great! Let me know if you run into any issues while resetting your password."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Password reset successful, but now it's giving me an 'Account locked' message."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "That's probably due to multiple failed login attempts. I can unlock your account for you. One moment, please."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.idle"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Your account has been unlocked. Please try logging in again with your new password."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "It worked! I'm finally in."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Glad to hear that! If you need any further assistance, feel free to reach out."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Thanks a lot for the help. I was getting really frustrated."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "I completely understand. We’re here to help, so don't hesitate to contact us if you run into any more issues."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.idle"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Just one more thing, can you check if there are any security alerts on my account?",
+    "hasAttachments": false
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "I’ve checked your account, and there are no security alerts. Everything looks secure on our end."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "That's a relief. Thank you."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "No problem at all. Keeping your account secure is our priority. If you need anything else, just let us know."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.leftChat"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

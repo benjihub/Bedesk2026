@@ -1,0 +1,2 @@
+import{A as c,j as t}from"./client-j9nNowi7.js";const a=c(t.jsx("path",{d:"M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"}),"ComputerOutlined"),e=c(t.jsx("path",{d:"M17 1.01 7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"}),"SmartphoneOutlined"),n=c(t.jsx("path",{d:"M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 1.99-.9 1.99-2L23 6c0-1.1-.9-2-2-2zm-2 14H5V6h14v12z"}),"TabletOutlined");export{a as C,e as S,n as T};
+//# sourceMappingURL=Tablet-CnPeDAE-.js.map

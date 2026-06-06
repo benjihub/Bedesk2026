@@ -1,0 +1,133 @@
+[
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Hi, I have a question about my recent invoice. It seems higher than usual."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Hello! I'd be happy to help with that. Could you provide me with your account number or the invoice number so I can take a look?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Sure, my account number is 123456."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Thank you. Please give me a moment while I look into this for you."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Hi, taking over this query. I’ve reviewed your account and the latest invoice. It seems there was an additional charge for extra storage this month."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Extra storage? I don't recall adding any storage this month."
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "It appears the storage limit was exceeded, triggering an automatic upgrade to the next tier. Did you recently upload a large amount of data or make changes to your storage settings?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "I did upload some files recently, but I wasn't aware it would affect my billing. Is there a way to avoid this charge?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "We can help by downgrading your storage if you remove some data, or you can pre-select a higher storage plan that fits your usage to avoid automatic upgrades. Let me know which option works for you."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "If I downgrade now, will I get a refund for the extra charge this month?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "If you downgrade within the current billing cycle, we can issue a pro-rated credit to your account for the unused portion of the higher storage tier."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Alright, I'll go ahead and remove some files to downgrade. How do I request the credit once I'm done?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Once you've downgraded, just let us know here or submit a request through the billing support form. We’ll process the credit for you."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.idle"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Okay, I've removed some files. Could you check if the downgrade has been applied?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "I see the changes. Your account has been successfully downgraded to the previous storage tier."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Great. Can you process the credit now?"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Certainly. To process the credit, I'll need a copy of the invoice showing the extra charge. Could you attach that here?"
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Sure, attaching the invoice and a screenshot of my account for your reference.",
+    "hasAttachments": true
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "Thank you for the attachments. I’ve reviewed the invoice and processed a credit to your account. You should see the credit reflected within 1-2 business days."
+  },
+  {
+    "type": "message",
+    "author": "user",
+    "content": "Thanks a lot for the help!"
+  },
+  {
+    "type": "message",
+    "author": "agent",
+    "content": "You're welcome! If you have any more questions about billing or anything else, feel free to reach out."
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "customer.leftChat"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

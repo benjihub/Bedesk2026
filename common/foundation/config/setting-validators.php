@@ -1,0 +1,18 @@
+<?php
+
+return [
+    \Common\Settings\Validators\MailCredentials\OutgoingMailCredentialsValidator::class,
+    \Common\Settings\Validators\GoogleLoginValidator::class,
+    \Common\Settings\Validators\FacebookLoginValidator::class,
+    \Common\Settings\Validators\TwitterLoginValidator::class,
+    \Common\Settings\Validators\CacheConfigValidator::class,
+    \Common\Settings\Validators\AnalyticsCredentialsValidator::class,
+    \Common\Settings\Validators\QueueCredentialsValidator::class,
+    \Common\Settings\Validators\WebsocketCredentialsValidator::class,
+    \Common\Settings\Validators\LoggingCredentialsValidator::class,
+    \Common\Settings\Validators\CaptchaCredentialsValidator::class,
+    \Common\Settings\Validators\PaypalCredentialsValidator::class,
+    \Common\Settings\Validators\StripeCredentialsValidator::class,
+    \Common\Settings\Validators\SearchConfigValidator::class,
+    \Common\Settings\Validators\StaticFileDeliveryValidator::class,
+];

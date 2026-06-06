@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Greeting Message",
+    "body": "Hello! How can I assist you today?"
+  },
+  {
+    "name": "Account Assistance",
+    "body": "I can help you with your account setup. Could you please provide your account ID?"
+  },
+  {
+    "name": "Thank You for Contacting",
+    "body": "Thank you for reaching out! Let me check that for you."
+  },
+  {
+    "name": "Product Inquiry",
+    "body": "Can you provide more details about the product you are interested in?"
+  },
+  {
+    "name": "Technical Issue",
+    "body": "I’m sorry to hear about the issue. Could you please describe the problem in more detail?"
+  },
+  {
+    "name": "Follow-up Message",
+    "body": "Just checking in to see if you need further assistance. Let me know if I can help!"
+  },
+  {
+    "name": "Escalating to Specialist",
+    "body": "I’ll forward your request to a specialist. You’ll hear back from us soon."
+  },
+  {
+    "name": "Thank You for Patience",
+    "body": "Thank you for your patience while I look into this for you."
+  },
+  {
+    "name": "Subscription Renewal",
+    "body": "Your subscription is about to expire. Would you like assistance with renewing it?"
+  },
+  {
+    "name": "Goodbye Message",
+    "body": "If you have any other questions, feel free to reach out again! Have a great day."
+  }
+]

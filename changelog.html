@@ -1,0 +1,1131 @@
+<h2>2025 November 10 - Version 3.0.7</h2>
+<ul>
+  <li>new: show sections in multi product grid, instead of articles</li>
+  <li>fix: article attachment downloads requiring extra permissions to download</li>
+  <li>fix: conversation summary generation</li>
+  <li>fix: tickets from plain text emails sometimes not displaying paragraphs correctly</li>
+  <li>fix: "manage help center" permission not allowing category creation</li>
+  <li>fix: google analytics report</li>
+  <li>fix: slack notification channel configuration</li>
+  <li>fix: roles created from admin area always defaulting to "user" type</li>
+  <li>fix: license alert sometimes showing even if license is activated</li>
+  <li>
+    [livechat] fix: user data from pre-chat form not being available as variable in initial flow
+    message
+  </li>
+  <li>
+    [livechat] fix: default language from settings page sometimes not applied to new widget
+    customers
+  </li>
+</ul>
+
+<h2>2025 October 25 - Version 3.0.6</h2>
+<ul>
+  <li>fix: some unrelated functionality not working properly when addons are not installed</li>
+  <li>fix: filtering by multiple categories in views using "or" type</li>
+  <li>fix: filtering customers when creating new ticket as agent</li>
+</ul>
+
+<h2>2025 October 24 - Version 3.0.5</h2>
+<ul>
+  <li>
+    new: update functionality in admin area. You will now be notified of new updates to BeDesk and
+    installed addons in admin area and can update directly from "admin > settings > system > update"
+    page.
+  </li>
+  <li>
+    new: upgraded "admin > settings > uploading" page. You can now have multiple "backends" (eg. s3,
+    ftp, local disk) at the same time for storing files.
+  </li>
+  <li>
+    new: upload restrictions (size, type, extension etc.) can now be configured per upload type.
+  </li>
+  <li>new: Purchase code can now be activated from "admin > settings > system > licenses" page.</li>
+  <li>new: updated REST API documentation with new endpoints</li>
+  <li>new: agent invites can now be sent to existing users</li>
+  <li>new: support for oauth authentication for imap</li>
+  <li>new: specific category attribute options can now be made selectable by agent only</li>
+  <li>new: email replies to request received notification will now update the ticket in bedesk</li>
+  <li>new: dark mode improvements</li>
+  <li>improve: stripping quoted text and signatures from inbound emails</li>
+  <li>fix: some translation lines not included by default</li>
+  <li>fix: notification settings not showing for agents</li>
+  <li>fix: issue with slack notifications</li>
+  <li>fix: category grid layout on landing page on mobile devices</li>
+  <li>fix: issue with merging customers</li>
+  <li>fix: issue with secondary emails</li>
+  <li>fix: issue with renaming statuses in admin area</li>
+  <li>fix: heading obsctructed by header on article page when scrolling to anchor</li>
+  <li>fix: invalid urls for article and category in sitemap generator</li>
+  <li>fix: draft article being viewable via direct link</li>
+  <li>fix: redirecting to wrong url after creating user in admin area</li>
+  <li>fix: issue with article creation when ai agent is enabled</li>
+  <li>fix: email verification sending duplicate otp email</li>
+  <li>fix: customers page not showing users registered via API sometimes</li>
+  <li>fix: websocket credentials validation</li>
+  <li>[livechat] new: added a way for customer to close chat manually in widget</li>
+  <li>
+    [livechat] fix: open chat screen automatically when clicking on widget toggle, when there's a
+    new message from agent
+  </li>
+  <li>[livechat] fix: text input losing focus in chat widget after submitting a message</li>
+  <li>
+    [livechat] fix: attach files button visible on new ticket screen, event if user has no
+    permissions to upload files
+  </li>
+  <li>[ai] fix: collect details step in flows sometimes not triggering subsequent steps</li>
+</ul>
+
+<h2>2025 September 19 - Version 3.0.4</h2>
+<ul>
+  <li>new: add url type for custom attributes</li>
+  <li>
+    [livechat] fix: file uploading in chat widget not disabling if files.upload permission is
+    removed
+  </li>
+  <li>fix: compatibility with MariaDB</li>
+  <li>fix: uploaded logo not showing in some email templates</li>
+  <li>fix: notifications for new conversation replies not arriving sometimes</li>
+  <li>fix: creating new ticket from agent dashboard sometimes not preserving subject</li>
+  <li>fix: issue with entering pusher credentials for EU regions.</li>
+  <li>fix: new lines sometimes not being preserved when converting emails into tickets.</li>
+</ul>
+
+<h2>2025 September 15 - Version 3.0.3</h2>
+<ul>
+  <li>[ai] new: allow deleting website while it's still being ingested</li>
+  <li>[livechat] fix: wiget getting cut off on smaller mobile screens</li>
+  <li>
+    fix: notification for new message showing even when conversation page is open for that message
+  </li>
+</ul>
+
+<h2>2025 September 14 - Version 3.0.2</h2>
+<ul>
+  <li>[ai] fix: updated articles not getting ingested sometimes</li>
+  <li>
+    [livechat] fix: security and uploads settings not being reflected sometimes after page reload
+  </li>
+  <li>new: dark mode improvements</li>
+  <li>fix: issues with theme creation</li>
+  <li>fix: mysql full text search not creating index properly sometimes</li>
+  <li>fix: wrong color applied sometimes in theme editor</li>
+  <li>fix: some groups not showing in agent inbox sidebar</li>
+</ul>
+
+<h2>2025 September 11 - Version 3.0.1</h2>
+<ul>
+  <li>
+    [livechat] new: added a new setting for automatically showing livechat widget in help center
+  </li>
+  <li>
+    [livechat] fix: livechat widget not loading if it's added dynamically after page already loaded
+  </li>
+  <li>new: variable support in canned replies</li>
+  <li>fix: ordering by feedback option in help center not working</li>
+  <li>fix: email verification sending duplicate otp email</li>
+  <li>fix: don't ask for email again on new ticket form if customer already has an email</li>
+  <li>fix: notifications linking to invalid url sometimes</li>
+  <li>fix: view counts in agent inbox including test and chatbot conversations</li>
+  <li>fix: general group sometimes assigned twice when inviting agent</li>
+  <li>fix: resending agent invite not working</li>
+  <li>
+    fix: envato purchases panel in account settings page not updating until page reload after adding
+    new code
+  </li>
+</ul>
+
+<h2>2025 September 08 - Version 3.0.0</h2>
+<p>
+  This is a massive update and includes many new features to BeDesk itself as well as livechat
+  widget addon and AI agent addon.
+</p>
+<h3>Livechat addon</h3>
+<ul>
+  <li>Fully featured livechat widget that you can embed on your site.</li>
+  <li>Many new livechat related features inside BeDesk.</li>
+  <li>Full integration with BeDesk agent inbox.</li>
+</ul>
+<a href="https://bedesk.vebto.com/livechat-widget" target="_blank" rel="noopener"
+  >See all the features here</a
+>
+<h3>AI Agent addon</h3>
+<ul>
+  <li>Advanced AI agent that integrates with BeDesk and livechat addon.</li>
+  <li>Can answer customer questions based on knowledge.</li>
+  <li>Flow builder, tools, personality settings and more inside BeDesk.</li>
+</ul>
+<a href="https://bedesk.vebto.com/ai-agent" target="_blank" rel="noopener"
+  >See all the features here</a
+>
+<h3>New BeDesk features</h3>
+<h4>Updated appearance</h4>
+<p>
+  Fully revamped appearance of agent dashboard, help center, admin area and customer ticket portal.
+</p>
+<ul>
+  <li>New modern and user friendly look.</li>
+  <li>Chat and list layout for conversation page.</li>
+  <li>Customizable inbox sidebar in conversation page.</li>
+  <li>You can now customize what data is shown in conversations table.</li>
+  <li>Moved reply composer to the bottom.</li>
+  <li>
+    Updated conversations details sidebar with more information and support for custom attributes.
+  </li>
+</ul>
+<h4>Realtime updates</h4>
+<p>
+  Implemented realtime functionality for many parts of the helpdesk. Now you can see whether
+  customer or agent is currently online and conversations will show new messages and status changes
+  in real time.
+</p>
+<h4>Team management</h4>
+<p>Added fully featured team management. You can now invite and manage team members.</p>
+<ul>
+  <li>Invite agents from dashboard.</li>
+  <li>See all available agents and their status.</li>
+  <li>
+    Manage roles and permissions for agents to only allow access to specific parts of dashboard.
+  </li>
+  <li>Working hours for agents.</li>
+  <li>Agent specific reports.</li>
+</ul>
+<h4>Groups</h4>
+<p>Added groups (departments) functionality to allow easier management of multiple agents.</p>
+<ul>
+  <li>Route conversations to specific groups.</li>
+  <li>Primary and backup agents withing a group.</li>
+  <li>Auto conversation assignment (round robin) or manual assignment within groups.</li>
+  <li>Group specific reports.</li>
+</ul>
+<h4>Customers</h4>
+<p>Fully overhauled customer management in agent dashboard.</p>
+<ul>
+  <li>
+    Sections for verified (email) customers, visitors (via livechat), currently online customers and
+    suspended customers.
+  </li>
+  <li>
+    Many new filters including returning visitor, number of visits, browser, device, language,
+    timezone, country and more.
+  </li>
+  <li>Updated custom profile page with more details and support for custom fields.</li>
+</ul>
+<h4>Custom attributes</h4>
+<p>
+  New custom attributes/fields functionality allows storing additional information about
+  conversations and customers and adding custom fields to forms.
+</p>
+<ul>
+  <li>Custom attributes for conversations and customers.</li>
+  <li>Add custom fields to new ticket, customer, pre/post chat and other forms.</li>
+  <li>Multiple formats: text, number, date, dropdown, checkbox, radio and more.</li>
+  <li>View custom field values in customer and conversation sidebar and profile pages.</li>
+  <li>Require custom field to be filled in when creating new ticket.</li>
+  <li>Permission management: Customer can view, customer can edit, only agent can edit.</li>
+  <li>Separate name and description for customer and agent.</li>
+  <li>Filter conversations and users by custom attributes.</li>
+</ul>
+<h4>Conversations views</h4>
+<p>
+  Create and save fully custom conversations views. This allows showing only conversations that
+  match specific criteria.
+</p>
+<ul>
+  <li>Show in sidebar along with default views (Mine, Unassigned, All, etc.).</li>
+  <li>Can be shared with multiple agents or made private.</li>
+  <li>
+    Select which conversations are shown based on many conditions, including status, channel, update
+    date, assignee, group, custom attributes and more.
+  </li>
+  <li>Select which columns are shown in conversations table for this view.</li>
+</ul>
+<h4>Custom statuses</h4>
+<p>Create and assign custom statuses for conversations.</p>
+<ul>
+  <li>Custom labels.</li>
+  <li>Filter by custom statuses.</li>
+  <li>Assign custom statuses to conversations.</li>
+</ul>
+<h4>Help center</h4>
+<ul>
+  <li>Updated the look of help center article pages.</li>
+  <li>Improved WYSIWYG editor.</li>
+  <li>New category grid layout for landing page.</li>
+  <li>New look for article grid landing page.</li>
+  <li>Better support for custom category icons.</li>
+</ul>
+<h4>Customer ticket portal</h4>
+<ul>
+  <li>New look for customer ticket portal.</li>
+  <li>Non logged in visitors can now create tickets.</li>
+  <li>Add custom fields to new ticket form.</li>
+  <li>Updated reply composer.</li>
+</ul>
+<h4>Settings</h4>
+<ul>
+  <li>Better descriptions and grouping.</li>
+  <li>Links to corresponding documentation articles.</li>
+  <li>Merged appearance editor and settings page, everything is now in one place.</li>
+  <li>Updated theme editor and menu manager.</li>
+  <li>New settings for ticket management and help center.</li>
+</ul>
+<h4>Triggers</h4>
+<p>
+  Added several new conditions and actions to triggers and support for chats started via livechat
+  widget.
+</p>
+<h4>Permissions</h4>
+<p>
+  Overhauled the permissions that can be assigned to agents and roles. It should now be a lot easier
+  to understand what actions each permission allows.
+</p>
+<h4>Reports</h4>
+<p>New look for report page as well as several new reports including agent, group and tags.</p>
+<h4>Bugfixes</h4>
+<p>Fixed 80+ bugs and minor issues.</p>
+
+<h2>2024 May 23 - Version 2.0.2</h2>
+<ul>
+  <li>new: it's now possible to edit subject on ticket page</li>
+  <li>new: errors will on the site will now show more details, if logged in as admin.</li>
+  <li>new: translations can now be downloaded and uploaded as .json file</li>
+  <li>
+    new: visible to and managed by fields are now available for categories as well as articles
+  </li>
+  <li>new: added CRON, outgoing email and error logs in admin area</li>
+  <li>new: changed email verification to use one time password, instead of verification link</li>
+  <li>new: request password before allowing user to delete account</li>
+  <li>new: allow sitemap generation via command line</li>
+  <li>fix: existing trigger conditions sometimes not showing</li>
+  <li>fix: ticket report generation issue</li>
+  <li>fix: old settings sometimes being cached</li>
+  <li>fix: article editor info block duplicating sometimes</li>
+  <li>fix: resending email verification from admin area</li>
+  <li>fix: some layout issues in user profile page</li>
+  <li>fix: customer tickets page sorting</li>
+  <li>fix: uploading image for new category sometimes not working</li>
+  <li>fix: line breaks sometimes getting removed from ticket reply</li>
+  <li>fix: some issues with appearance editor color pickers</li>
+  <li>fix: seo tags being duplicated sometimes</li>
+  <li>
+    fix: mark all notification as unread, instead of just visible ones via mark as unread button
+  </li>
+  <li>fix: api docs authentication</li>
+  <li>fix: mobile menu sometimes opening links in new window</li>
+  <li>fix: cookie notice layout on mobile</li>
+</ul>
+
+<h2>2024 January 05 - Version 2.0.1</h2>
+<ul>
+  <li>fix: a few issues with user passwords and login</li>
+  <li>fix: email attachments when using s3 to store files</li>
+  <li>fix: visual issues on landing page headings</li>
+  <li>fix: hide purchases panel if envato integration is disabled</li>
+</ul>
+
+<h2>2023 December 29 - Version 2.0.0</h2>
+
+<h4>New Features</h4>
+<ul>
+  <li>
+    Fully rewritten BeDesk in React. This results in many improvements from previous versions,
+    including better performance, bundle size reduction by nearly 2x (with bigger reduction in
+    future updates), better animations and many bugfixes.
+  </li>
+  <li>Refreshed the design for most pages across the site.</li>
+  <li>Added support for importing emails via IMAP.</li>
+  <li>Added support for parsing raw emails using OpenAI.</li>
+  <li>It's now possible to upload files directly from browser to s3 and s3 compatible services.</li>
+  <li>Added new editor for articles and ticket replies.</li>
+  <li>Added simplified threading to email replies.</li>
+  <li>Added two factor authentication support.</li>
+  <li>
+    It's now possible to change default font, border radius and navbar color from appearance editor.
+  </li>
+  <li>Users can now be suspended/baned from admin area.</li>
+  <li>Added full size social login buttons as an option in login and register pages.</li>
+  <li>It's now possible to select article author and role that article is visible to.</li>
+  <li>It's now possible to prevent emails from certain domains from registering new accounts.</li>
+  <li>New SEO tags editor in admin area.</li>
+  <li>Added active sessions panel in account settings page.</li>
+</ul>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Migrated Google Analytics integration to v4.</li>
+  <li>Improved landing page appearance editor.</li>
+  <li>Many improvements to help center management.</li>
+  <li>Many improvements to reports and charts in admin area.</li>
+  <li>Many improvements to help center and agent search.</li>
+  <li>Admin sidebar can now be edited from menu manager.</li>
+  <li>Updated to the latest version of Laravel.</li>
+  <li>Added compatibility with PHP 8.1+</li>
+  <li>It's now possible to preview files from "admin -> files" page.</li>
+  <li>
+    When email confirmation is enabled, user will now see a special page where they can resend
+    confirmation email.
+  </li>
+  <li>Appearance editor themes section now has fewer colors that need to be overwritten.</li>
+  <li>Added a lot more icons in appearance editor icon selector.</li>
+  <li>
+    Call to action buttons in landing page editor and gdpr settings in admin area now have the same
+    options as menu editor items.
+  </li>
+  <li>Improved filtering for data tables in admin area.</li>
+  <li>Menus can now be assigned to multiple positions.</li>
+  <li>
+    Menu items in menu manager can now be configured to show based on user roles or permissions.
+  </li>
+  <li>Added region option to mailgun mail provider in settings page.</li>
+  <li>Upgraded GDPR EU location check.</li>
+  <li>Added postmark mail provider.</li>
+  <li>Update translation manager in admin area, there should no longer be any missing strings.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed several issues with translations.</li>
+  <li>Fixed an issue with article attachment download.</li>
+  <li>Fixed a number of issues related to timezones and daylight savings time in charts.</li>
+  <li>Updated GEOIP database for resolving user location from IP.</li>
+  <li>Fixed logout sometimes not working until page reload.</li>
+  <li>Only show "Developers" menu item if user has "api.access" permission.</li>
+  <li>
+    Fixed an issue where ordering in admin data tables would not work properly when certain filters
+    were active.
+  </li>
+  <li>Prevent user from being logged out when changing password in account settings page.</li>
+  <li>
+    Default browser language will no longer take priority over one selected in admin settings.
+  </li>
+  <li>
+    Fixed an issue where disabling registration from settings page would leave API registration
+    route active.
+  </li>
+  <li>Prevent admin user from being deleted.</li>
+  <li>Fix wrong site url sometimes being set during installation.</li>
+  <li>Fix google tag manager snippet not being inserted correctly sometimes</li>
+</ul>
+
+<h2>2021 September 25 - Version 1.3.6</h2>
+
+<h4>New Features</h4>
+<ul>
+  <li>Added Gmail provider for both incoming and outgoing emails.</li>
+  <li>
+    Added time based trigger conditions. For example, it's now possible to close the ticket
+    automatically after a number of hours passed since last user reply.
+  </li>
+  <li>
+    Added "mailbox address" trigger condition for checking at what address email that created the
+    ticket arrived.
+  </li>
+  <li>
+    Added a fully featured, token based API. It can be used to integrate BeDesk into other projects,
+    native apps and more.
+  </li>
+  <li>
+    Added <strong>Manage API Access Tokens</strong> section in
+    <a href="https://bedesk.vebto.com/account/settings" target="_blank" rel="noopener"
+      >account settings</a
+    >
+    page for creating or revoking API access tokens.
+  </li>
+  <li>
+    Added functional API docs. They can be accessed at
+    <a href="https://bedesk.vebto.com/api-docs" target="_blank" rel="noopener"
+      >your-site.com/api-docs</a
+    >
+    url, there's also a link in account settings page.
+  </li>
+  <li>Added filtering functionality to ticket search dialog.</li>
+  <li>Added meilisearch integration for ticket and article search.</li>
+</ul>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Updated datatable design in admin area and added a number of new filters.</li>
+  <li>
+    Simplified permission manager. It will now have better descriptions for permissions and rarely
+    used permissions will be hidden behind "advanced" button toggle.
+  </li>
+  <li>Clicking envato purchase code in the sidebar will now show details for the purchase.</li>
+  <li>
+    New ticket notification will now show ticket subject and category along the new ticket body.
+  </li>
+  <li>Improved incoming email quoted reply and signature parsing.</li>
+  <li>
+    A more descriptive error message will now be shown if incompatible PHP version is detected.
+  </li>
+  <li>Fixed a few issues with sitemap generation.</li>
+  <li>Updated laravel and angular to the latest version.</li>
+  <li>Custom pages and articles will now support code highlighting for more languages.</li>
+  <li>Shown agent display name instead of email in assign ticket dropdown.</li>
+  <li>
+    Locale can now be set automatically based on the browser preferences or parameter in the url.
+  </li>
+  <li>Help center footer now has two menus editable from menu manager.</li>
+  <li>User can now change language and theme without logging in.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>New trigger page will now correctly show validation errors.</li>
+  <li>Fixed several issues in ticket search dialog.</li>
+  <li>It's now possible to upload files while on mobile in new ticket form.</li>
+  <li>
+    Article content sidebar will now correctly scroll if it's longer then the article content.
+  </li>
+  <li>Fixed an issue with sorting in help center article index.</li>
+  <li>Assigning ticket to aggent via trigger will now correctly send notification to the agent.</li>
+  <li>
+    Emails and notifications will now be sent in language that user has selected in their account
+    settings page.
+  </li>
+  <li>
+    Request received notification will no longer be sent to customer if agent creates a new ticket
+    for that customer.
+  </li>
+  <li>Clicking user or article is search dialog will now correctly close the dialog.</li>
+  <li>Article order select will now work properly in help center category page.</li>
+  <li>
+    Tag manager in new article page will now correctly suggest from all existing tags, instead of
+    only recent tags when typing.
+  </li>
+  <li>Email notifications will now have alt tag for all images.</li>
+  <li>Fixed an issue where installation might not start properly on some hosting environments.</li>
+  <li>
+    Fixed an issue where article content menu would not work sometimes if it has accented
+    characters.
+  </li>
+  <li>Fixed a few issues with algolia search provider.</li>
+  <li>Copy should work properly on macOS in the text editor.</li>
+  <li>
+    Fixed an issue where public image would sometimes be uploaded as private when using s3 to store
+    files.
+  </li>
+  <li>
+    Social logins panel in account settings page will now be hidden if all social logins are
+    disabled in settings page.
+  </li>
+  <li>
+    Fixed an issue where incorrect article might be shown for a specific url for web crawlers.
+  </li>
+  <li>Corrected some visual issues with search input in agent mailbox page.</li>
+  <li>A number of other smaller fixes.</li>
+</ul>
+
+<h2>2020 October 02 - Version 1.3.5</h2>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Only one device can now be allowed to be logged into user account at the same time.</li>
+  <li>
+    Changed default mailbox folders so it's easier to see which tickets are assigned or unassigned.
+  </li>
+  <li>"Pending" tickets will no longer be included in the count number next to folder name.</li>
+  <li>
+    "Open" tickets will now have bold text so they it's easier to tell "open" and "pending" tickets
+    apart.
+  </li>
+  <li>Tickets per page setting in tickets list will now be remembered.</li>
+  <li>
+    Parent categories in "article grid" help center layout can now have articles as well as child
+    categories.
+  </li>
+  <li>Persist pagination and sort parameters between page reloads in ticket list.</li>
+  <li>Category page article list now can load more articles when scrolling down.</li>
+  <li>Don't show folders that have no tickets in left sidebar of ticket list.</li>
+  <li>User tags will now be shown in conversation sidebar.</li>
+  <li>Tickets in search modal can now be sorted properly.</li>
+  <li>Same condition and action type can be now used multiple times in same trigger.</li>
+  <li>
+    Automatically clear help center homepage cache after updating/deleting category or article.
+  </li>
+  <li>
+    If envato integration is enabled, individual purchases can now be added by code from account
+    settings page.
+  </li>
+  <li>Tags in article list can now be clicked and will filter article list by that tag.</li>
+  <li>Compatibility with new pusher API version.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Don't count closed tickets toward ticket count of "mine" folder.</li>
+  <li>Fixed an issue where date range for ticket report might skip the first day sometimes.</li>
+  <li>
+    Fixed an issue where agents would not be able to open notification subscription page sometimes.
+  </li>
+  <li>
+    Styling applied in conversation editor will now correctly appear in agent notification reply
+    preview snippet.
+  </li>
+  <li>Help center search page will now show correct total matched article count.</li>
+  <li>
+    "Send and next ticket" action will no longer automatically open tickets that are assigned to
+    someone else.
+  </li>
+  <li>All text on ew ticket page will now be correctly translatable.</li>
+  <li>Fixed several article display issues on certain tablet sizes.</li>
+</ul>
+
+<h2>2020 July 6 - Version 1.3.4</h2>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Recent user help center searches can now be viewed on their profile page.</li>
+  <li>Google analytics integration will now use newer .json key file instead of .p12</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed an issue where mail configuration from previous versions was not used sometimes.</li>
+  <li>
+    Opening a different article after giving feedback will now properly reset feedback panel state.
+  </li>
+  <li>Mail credentials validation in settings page will now work properly.</li>
+  <li>
+    Fixed an issue where registration might not work sometimes if email verification was enabled.
+  </li>
+</ul>
+
+<h2>2020 July 5 - Version 1.3.3</h2>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>
+    Updated Laravel to latest version. BeDesk now requires at least PHP 7.2.5 version to work
+    properly.
+  </li>
+  <li>Updated login, register, forgot password and reset password pages design.</li>
+  <li>
+    If some server error occurs a more descriptive message will now be shown if user is logged in as
+    admin.
+  </li>
+  <li>All email templates will now have the same design.</li>
+  <li>Added separate address for contact page in mail settings page.</li>
+  <li>
+    Show notification in "settings -> general" page if specified base site url and current url don't
+    match.
+  </li>
+  <li>Improved video embedding in article and custom pages.</li>
+  <li>Improved input focus outline design.</li>
+  <li>Use default article order setting in main help center category page.</li>
+  <li>Article header tag IDs will now be updated automatically when updating article.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Cache method changes in settings page will now be properly validated.</li>
+  <li>Clearing cache will now work if "proc_open" function was disabled on the server.</li>
+  <li>Make sure text logo does not push login button offsreen.</li>
+  <li>Fixed several possible issues when visiting /update url.</li>
+  <li>
+    Always store appearance editor custom css and js locally, regardless of storage method in
+    settings page.
+  </li>
+  <li>
+    If placeholders can't be replaced in tags provided in "admin > appearance > seo" page, hide
+    those tags when displaying the page.
+  </li>
+  <li>A number of other smaller fixes.</li>
+</ul>
+
+<h2>2020 June 14 - Version 1.3.2</h2>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Select default status in conversation editor will now persist between page reloads.</li>
+  <li>Custom text on new ticket page will now be translatable.</li>
+  <li>Improved email piping compatibility with some hosting providers.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>
+    Fixed an issue where trigger action would sometimes not be visible when editing existing
+    trigger.
+  </li>
+  <li>
+    "Add note" trigger action will now set note's user id to the user that created the trigger.
+  </li>
+  <li>
+    Fixed an issue where envato purchase code expiration date would not be imported sometimes when
+    using purchase code to register.
+  </li>
+  <li>Fixed an issue where tags could not be deleted sometimes in admin area.</li>
+  <li>
+    Help center exported for documentation will now correctly link to locally exported images.
+  </li>
+  <li>Chunked uploading will now work correctly if file name has accented characters.</li>
+</ul>
+
+<h2>2020 March 14 - Version 1.3.1</h2>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed an issue where update would not apply properly sometimes.</li>
+  <li>Default menus will now have conditions set correctly.</li>
+  <li>Fixed a few issues with realtime functionality.</li>
+  <li>Fixed an issue with list styling in help center articles.</li>
+  <li>Only show notification settings button to agents.</li>
+</ul>
+
+<h2>2020 March 13 - Version 1.3.0</h2>
+
+<h4>New Features</h4>
+<ul>
+  <li>Added new notification and notification settings system.</li>
+  <li>Added dark & light mode as well as multiple theme functionality.</li>
+  <li>Files can now be attached to articles.</li>
+  <li>Integrated google analytics.</li>
+  <li>Added 3 new reports: Popular searches, failed searches and popular articles.</li>
+  <li>
+    Envato integration can now check if user support is active on envato before allowing new ticket
+    creation.
+  </li>
+  <li>Added configurable GDPR cookie notice.</li>
+  <li>Added configurable confirmation policies to register page.</li>
+  <li>
+    Added chunked uploading. This allows BeDesk to upload large files in smaller chunks for better
+    upload reliability and avoid server file size limits.
+  </li>
+  <li>Added resumable uploads functionality.</li>
+  <li>
+    Data tables in admin area now have a number of built-in filters for easier data management.
+  </li>
+  <li>
+    Public uploads (like user avatars) can now be stored on cloud services (s3, digitalocean,
+    backblaze etc.).
+  </li>
+  <li>
+    Added support for XSendFile and XAcceleratedResponse for reducing server RAM and CPU usage when
+    previewing or downloading files.
+  </li>
+</ul>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>Improved focus management in canned replies dropdown.</li>
+  <li>Users can now mark their own ticket as solved.</li>
+  <li>File uploads in conversation page will now show more clear validation messages.</li>
+  <li>Ticket list in search modal will now have pagination.</li>
+  <li>Improved page load times across the site.</li>
+  <li>Unused upload artifacts will now be automatically deleted.</li>
+  <li>
+    Added new "event:type" condition to triggers for differentiating between ticket created and
+    updated events.
+  </li>
+  <li>It should now be easier to move caret out of "note" widget in text editor.</li>
+  <li>Hide category name and description in article grid if there's only one parent category.</li>
+  <li>
+    Show whether category is hidden in category manager without needing to edit that category.
+  </li>
+  <li>
+    Accented characters (like chinese and cyrillic) will now work properly in article url slugs.
+  </li>
+  <li>Added blockquote and indentation controls to article/page editor.</li>
+  <li>Increased performance when previewing files stored on cloud services.</li>
+  <li>Category image will not be shown in article grid template.</li>
+  <li>"Submit new Request" link on article pages can now be hidden.</li>
+  <li>
+    Added automatic validations for search and realtime credentials in "admin -> settings" pages.
+  </li>
+  <li>Added search and status filter to customer ticket list page.</li>
+  <li>Article content will now be generated from h3 as well as h2 tags.</li>
+  <li>Tag manager will now suggest existing tags while typing.</li>
+  <li>Customer and agent ticket lists can now be sorted by clicking on header columns.</li>
+  <li>
+    "Time ago" dates will now be automatically translated across the site based on active
+    localization.
+  </li>
+  <li>Tags will now always be visible when viewing articles in grid in help center manager.</li>
+  <li>Improved performance when downloading large files.</li>
+  <li>Account confirmation email can now be resent from login page and admin area.</li>
+  <li>Localization settings page will now show all available timezones.</li>
+  <li>Admin area is now fully responsive.</li>
+  <li>Custom HTML can now be entered from "admin -> appearance > custom code" page.</li>
+  <li>Default user avatars will now be generated automatically based on their email address.</li>
+  <li>"iframe" and "script" tags are not supported in custom pages.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed an issue where uploads would sometimes not be attached to notes.</li>
+  <li>
+    Completely rebuilt appearance editor "colors" section, which will fix a number of issues with
+    changing default colors.
+  </li>
+  <li>Fixed a few issues with detaching uploads from canned replies.</li>
+  <li>
+    When uploading multiple files, if one upload fails, other uploads in the queue will now
+    correctly continue to upload.
+  </li>
+  <li>Fixed an issue with pusher cluster setting.</li>
+  <li>Fixed an issue where ticket list pagination would get out of sync sometimes.</li>
+  <li>Fixed an issue where tags would not be searchable sometimes.</li>
+  <li>Fixed several issues with envato reports page.</li>
+  <li>Fixed an issue where ticket search would sometimes not be ordered by relevancy.</li>
+  <li>
+    "Default Article Order" setting will now properly affect articles listed in sidebar as well.
+  </li>
+  <li>Non standard email address will now be parsed correctly when converting email to ticket.</li>
+  <li>Fixed a few non-translatable lines.</li>
+  <li>"Send Reply" dropdown selection will now correctly persist between page reloads.'</li>
+  <li>Html tags will now be correctly striped from auto generated article content titles.</li>
+  <li>New tags added when creating article will now properly show in tag manager suggestions.</li>
+  <li>
+    Reports will now be generated correctly for a single day when same day is selected as "from" and
+    "to" dates.
+  </li>
+  <li>Fixed an issue where upload progress bar animation would sometimes be "jerky".</li>
+  <li>A number of other smaller fixes and improvements.</li>
+</ul>
+
+<h2>2019 May 15 - Version 1.2.5</h2>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>
+    Correct categories should now show properly in article page, when article is attached to
+    multiple parent categories.
+  </li>
+  <li>Fixed a few issues with help center export in admin area.</li>
+  <li>Corrected a few visual issues on user profile page in agent mailbox.</li>
+  <li>Fixed an issue with envato reports not generating sometimes.</li>
+  <li>Fixed side navigation in offline documentation.</li>
+  <li>Fixed an issue with trigger sometimes not showing condition values when editing it.</li>
+</ul>
+
+<h2>2019 May 11 - Version 1.2.4</h2>
+
+<h4>New Features</h4>
+<ul>
+  <li>Added a new, simpler installer.</li>
+  <li>Added article contents sidebar to help center.</li>
+  <li>
+    Added new search bar to conversation page for easily inserting help center article links into
+    ticket.
+  </li>
+  <li>Added new design for help center homepage. (It can be changed from settings page)</li>
+  <li>New tickets can now be created by agents from mailbox page.</li>
+  <li>
+    "Notify via email" action in triggers page now supports placeholders. (For example inserting
+    ticket subject, replies, user email etc.)
+  </li>
+  <li>Ticket customer can now be changed from conversation page.</li>
+  <li>Help center can now be exported as offline documentation.</li>
+  <li>Emails can now be piped directly to BeDesk.</li>
+</ul>
+
+<h4>Enhancements</h4>
+<ul>
+  <li>"Ticket: assignee" condition now accepts user ID or email address.</li>
+  <li>Ticket's list will not show which agent (if any) a particular ticket is assigned to.</li>
+  <li>Canned replies can now be shared between agents.</li>
+  <li>
+    Help center categories (instead of tags) can now be used for "new ticket" page categories.
+  </li>
+  <li>Added user envato details in ticket sidebar (if envato integration is enabled).</li>
+  <li>
+    Current page, filters and sorting order will now be preserved in url on all pages containing
+    paginated results.
+  </li>
+  <li>Improved help center article page design.</li>
+  <li>Help center footer can now be hidden from settings page.</li>
+  <li>Mailbox page is now fully responsive.</li>
+  <li>Updated TinyMCE text editor to latest version.</li>
+  <li>
+    Invalid characters will now be automatically removed from "slug" when updating or creating
+    custom page from admin area.
+  </li>
+  <li>Navigating between different articles will now cause page to scroll to top always.</li>
+  <li>Added "edit" button to article page (if user has proper permissions).</li>
+  <li>
+    Improved category re-ordering via drag and drop in "help center > manage > categories" page.
+  </li>
+  <li>Search in "help center > manage > articles" page will now search article tags.</li>
+  <li>All users with "tickets.update" permission will now be recognised as agents.</li>
+  <li>"Open ticket" button in ticket modal will now close all open dialog windows.</li>
+  <li>Amazon S3 storage method endpoint can now be changed via settings page.</li>
+  <li>Menu for custom pages can now be created via menu manager.</li>
+  <li>Link target (new or same window) can now be specified via menu manager.</li>
+  <li>Menu manager "route" type items now support query parameters.</li>
+  <li>Google "mobile friendly" tests should now fully pass.</li>
+  <li>
+    "After reply action" will now be stored per agent. Default value can be specified from settings
+    page.
+  </li>
+  <li>Settings page will now validate most newly entered settings.</li>
+  <li>Raw emails can now be sent to BeDesk via Api and they will be parsed properly.</li>
+</ul>
+
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed several issues on "new ticket page" that occurred on iOS.</li>
+  <li>Fixed several issues in tickets and envato report pages.</li>
+  <li>Setting for changing maximum items in help center search page should work properly now.</li>
+  <li>
+    Selecting article from search dropdown via keyboard arrows and clicking "enter" will now
+    properly open that article.
+  </li>
+  <li>Fixed an issue where "canned reply" would not be editable sometimes.</li>
+  <li>Validation errors will now be shown when adding attachments in "new ticket" page.</li>
+  <li>
+    "All" Article status in help center article manager will now correctly show article drafts.
+  </li>
+  <li>Text editor "import" and "warning" widgets will not render properly on custom pages.</li>
+  <li>
+    Changes in "source" tab of text editor will now be correctly persisted even without switching to
+    "visual" tab first.
+  </li>
+  <li>Pagination in help center manager -> articles page will now work properly.</li>
+  <li>Fixed an issue where actions in ticket toolbar were not clickable in firefox sometimes.</li>
+  <li>
+    Fixed an issue where "Notify: via email" action would sometimes show blank input instead of user
+    email.
+  </li>
+  <li>Validation messages will now be translated when locale is not set to english.</li>
+  <li>It should not be possible to set homepage to blank page anymore from settings.</li>
+  <li>Sitename entered in "admin > appearance > general" page will now affect emails.</li>
+  <li>Properly resize wide logos in navbar on mobile.</li>
+  <li>Fixed an issue where user permissions could not be updated from admin area sometimes.</li>
+  <li>Menu item reordering via drag and drop should now work properly in menu manager.</li>
+  <li>"Add item" panel in menu manager should now work safari.</li>
+  <li>
+    Fixed an issue where ticket and reply list would not be updated sometimes when realtime
+    functionality is enabled.
+  </li>
+</ul>
+
+<h2>2018 November 22 - Version 1.2.3</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fix an issue where database prefix was not applied sometimes.</li>
+</ul>
+
+<h2>2018 October 22 - Version 1.2.2</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Add missing confirmation email template.</li>
+  <li>Fix "Hide incomplete categories" option in settings page.</li>
+  <li>Allow users to download files attached by agents to their ticket.</li>
+  <li>Fix "notify: via email" trigger action.</li>
+</ul>
+
+<h2>2018 September 17 - Version 1.2.1</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Align help center menu properly if no menu items are present.</li>
+  <li>Don't show regular users in assign ticket dropdown menu.</li>
+  <li>Allow copy/paste via keybinds in conversation page.</li>
+  <li>Fix an issue with attachments sometimes not previewing properly.</li>
+  <li>Improve envato item name and new ticket category matching, if envato plugin is enabled.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>Put custom styles tag after auto generated theme.</li>
+  <li>Updated 404 page design.</li>
+</ul>
+<h2>2018 September 16 - Version 1.2.0</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Highlight code snippets when navigating to different article without page refresh.</li>
+  <li>Change page title when navigating to different article without page refresh.</li>
+  <li>Deleting user will now properly remove their purchase codes and secondary emails.</li>
+  <li>Draft articles will no longer be visible via search.</li>
+  <li>Fix user notification via email trigger action.</li>
+  <li>Various other smaller bug fixes across the site.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>Help center design improvements.</li>
+  <li>Improve dropdown, dialog, button and other UI element accross the site.</li>
+  <li>Store translations in a file instead of database.</li>
+  <li>New translation lines can now be added from admin area.</li>
+  <li>Improved admin area design.</li>
+  <li></li>
+</ul>
+<h4>New Features</h4>
+<ul>
+  <li>New "files" section in admin area for all uploaded files.</li>
+  <li>
+    New "uploading" settings page for controlling where uploaded are stored, max size, blocked
+    extensions and more.
+  </li>
+  <li>New setting for changing homepage to a different page.</li>
+  <li>New setting for automatic redirection from http to https.</li>
+  <li>New setting for user email confirmation.</li>
+</ul>
+<h2>2018 August 16 - Version 1.1.0</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>don't show "draft" articles in help center by default.</li>
+  <li>corrected several issue with translations.</li>
+  <li>last names now allow spaces.</li>
+  <li>fixed an issue where ticket would not have body sometimes when using mailgun.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>added "open conversation" button in ticket modal.</li>
+  <li>improved matching of new emails to existing replies.</li>
+</ul>
+<h2>2018 February 15 - Version 1.0.9</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>tags will now properly use "display name" across the site.</li>
+  <li>ticket attachments will now be removed from draft without the need to reload the page.</li>
+  <li>prevent conversation page from stretching offscreen if ticket body has long text.</li>
+  <li>select article categories in manager when editing an existing article.</li>
+  <li>prevent names of default status tags from being editable.</li>
+  <li>make sure navbar does not overflow offscreen on mobile devices.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>store envato username for each user and purchase.</li>
+  <li>reduced javascript bundle size.</li>
+  <li>make copyright text in footer translatable.</li>
+</ul>
+<h2>2018 January 11 - Version 1.0.8</h2>
+<ul>
+  <li>renamed 'default' tag to 'status'.</li>
+  <li>fixed clicking on button with icon sometimes not working on EDGE browser.</li>
+  <li>
+    specific tag ticket pages will now have correct order, with open and pending tickets being
+    first.
+  </li>
+  <li>accented characters will now properly appear in article search dropdown.</li>
+  <li>
+    remove "connect social account" buttons from user profile page for social services that are
+    disabled via settings.
+  </li>
+  <li>properly show 404 page if requested custom page does not exist.</li>
+  <li>ticket creators will now have access to all public attachments for that ticket.</li>
+  <li>fixed some issues with 'notify: via email" trigger.</li>
+  <li>
+    CID email attachments that are not actually embedded into email body will now be added as
+    regular email attachments instead.
+  </li>
+  <li>fixed an issue with trigger updating sometimes not working.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>
+    added new "ticket:category" trigger condition for checking if ticket is created in specific
+    category.
+  </li>
+  <li>enabled native browser validation for forms across the site.</li>
+  <li>content will now be properly centered in custom pages.</li>
+</ul>
+<h2>2017 September 30 - Version 1.0.7</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>hide social login icons, if they are disabled from settings page.</li>
+  <li>fix an issue where on some servers all groups were marked as 'guests'</li>
+  <li>show "mine" status tag in agent mailbox sidebar.</li>
+  <li>show first and second name properly in account settings.</li>
+  <li>fix issue where accented characters in article title were not working sometimes.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>more sidebar tips in new ticket page can now be added via appearance editor.</li>
+  <li>existing sidebar tips in new ticket page can now be removed via appearance editor.</li>
+</ul>
+<h2>2017 Semptember 10 - Version 1.0.6</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>format numbers to have a maximum of two decimal points in report's page.</li>
+  <li>use tag display name for report's page.</li>
+  <li>truncate long labels in report's page to avoid display issues.</li>
+  <li>set ticket closed_at and closed_by properties properly.</li>
+  <li>don't try to initiate pusher library when realtime method is set to log.</li>
+  <li>fix typo in installer for minimum required PHP version.</li>
+  <li>fix an error in "create admin" step of installation.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>added "new ticket" button in user's ticket's list.</li>
+  <li>don't log 403 errors to console or sentry.</li>
+</ul>
+<h2>2017 Semptember 01 - Version 1.0.5</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>use script tag for embedding custom code on the page.</li>
+  <li>don't override original ticket when opening another ticket in a modal.</li>
+  <li>highlight text file syntax when previewing file on the site.</li>
+  <li>allow spaces in all configuration values.</li>
+  <li>gracefully handle errors or connection issues with server when searching for articles.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>open article suggestions on new ticket page in a new browser tab, instead of a modal.</li>
+</ul>
+<h2>2017 August 25 0 Version 1.0.4</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>make register and login links visible on mobile.</li>
+  <li>properly use database prefix in tickets list page.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>make categories and search page responsive.</li>
+</ul>
+<h2>2017 August 24 - Version 1.0.3</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>fixed installation issue introduced in last update.</li>
+  <li>apply database prefixes specified during installation.</li>
+  <li>increment application version number during update process.</li>
+  <li>make custom pages scroll properly.</li>
+  <li>fixed envato yearly earnings report.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>make article and custom pages share same style for content.</li>
+</ul>
+<h2>2017 August 23 - Version 1.0.2</h2>
+<h4>Bug Fixes</h4>
+<ul>
+  <li>set ticket as "Open" or "Pending" when user replies via the site.</li>
+  <li>hide "merge" button when viewing ticket via modal in user details page.</li>
+  <li>make ticket replies searchable from agent mailbox.</li>
+  <li>
+    hide "users" or "tickets" tab in agent mailbox search, if that tab has no corresponding results.
+  </li>
+  <li>properly increment article views.</li>
+  <li>allow permissions and groups to be attached when creating a new user from admin area.</li>
+  <li>log user in after successfully resetting their password.</li>
+  <li>fixed tooltips on Internet Explorer 11.</li>
+  <li>prevent duplicate tags from being added to ticket.</li>
+</ul>
+<h4>Enhancements</h4>
+<ul>
+  <li>improve elasticsearch provider accuracy and performance.</li>
+  <li>close ticket status dropdown when changing ticket status via keybind.</li>
+  <li>close Search autocomplete dropdown after clicking one of the search results.</li>
+  <li>show validation errors in "Add Email" modal in user details page.</li>
+  <li>
+    allow agents to view user details page, even if they don't have permissions to edit users.
+  </li>
+  <li>encode search queries, so they can contain accented characters.</li>
+  <li>
+    allow users registered via social login to set/change their password in account settings page.
+  </li>
+  <li>
+    perform after reply action after changing ticket status via keybind or ticket status dropdown.
+  </li>
+  <li>make "Next active ticket" after reply action smoother.</li>
+  <li>show notification to customer that their ticket or reply was submitted successfully.</li>
+  <li>add "Ctrl+Enter" keybind for submitting new reply.</li>
+  <li>
+    allow tag that does not exist yet to be added to a ticket by clicking enter after entering tag's
+    name.
+  </li>
+</ul>
+<h4>Features</h4>
+<ul>
+  <li>store search terms used by customers to search for articles.</li>
+  <li>added new queue configuration page in admin area.</li>
+</ul>

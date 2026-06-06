@@ -1,0 +1,30 @@
+.customer-ticket-page-layout {
+  display: grid;
+  grid-template-areas:
+    'header header'
+    'title details'
+    'content details'
+    'editor details';
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-columns: 1fr auto;
+}
+
+.customer-ticket-header {
+  grid-area: header;
+}
+
+.customer-ticket-title {
+  grid-area: title;
+}
+
+.customer-ticket-details {
+  grid-area: details;
+}
+
+.customer-ticket-content {
+  grid-area: content;
+}
+
+.customer-ticket-editor {
+  grid-area: editor;
+}

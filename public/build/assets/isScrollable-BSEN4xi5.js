@@ -1,0 +1,2 @@
+function c(t,r){if(!t)return!1;let l=window.getComputedStyle(t),e=/(auto|scroll)/.test(l.overflow+l.overflowX+l.overflowY);return e&&r&&(e=t.scrollHeight!==t.clientHeight||t.scrollWidth!==t.clientWidth),e}export{c as $};
+//# sourceMappingURL=isScrollable-BSEN4xi5.js.map

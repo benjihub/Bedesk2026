@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'version' => env('APP_VERSION'),
+    'billing_integrated' => env('BILLING_ENABLED', false),
+    'websockets_integrated' => env('WEBSOCKETS_INTEGRATED', false),
+    'outgoing_email_integrated' => env('OUTGOING_EMAIL_ENABLED', false),
+    'workspaces_integrated' => env('WORKSPACES_ENABLED', false),
+    'notifications_integrated' => env('NOTIFICATIONS_ENABLED', false),
+    'notif_subs_integrated' => env('NOTIF_SUBS_ENABLED', false),
+    'api_integrated' => env('API_INTEGRATED', false),
+    'enable_custom_domains' => env('ENABLE_CUSTOM_DOMAINS', false),
+    'dynamic_app_url' => env('DYNAMIC_APP_URL', true),
+    'hide_docs_buttons' => env('HIDE_DOCS_BUTTONS', false),
+    'verify_paypal_webhook' => env('VERIFY_PAYPAL_WEBHOOK', false),
+    'has_mobile_app' => env('HAS_MOBILE_APP', false),
+    'simulated_connection' => env('SIMULATED_CONNECTION', false),
+    'disable_csrf' => env('DISABLE_CSRF', false),
+    'demo_password' => env('DEMO_ADMIN_PASSWORD'),
+    'demo_email' => env('DEMO_ADMIN_EMAIL'),
+    'demo' => env('IS_DEMO_SITE', false),
+    'installed' => env('INSTALLED', false),
+    'use_new_uploading' => env('USE_NEW_UPLOADING', false),
+    'envato_purchase_code' => env('ENVATO_PURCHASE_CODE', null),
+];

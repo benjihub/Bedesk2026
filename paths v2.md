@@ -1,0 +1,9 @@
+/resources/client/dashboard/conversations/conversation-page/details-sidebar/ticket-milestones-panel.tsx
+/app/Reports/Controllers/TicketMilestoneReportController.php
+/app/Conversations/Models/TicketEventLog.php
+ /app/Conversations/Actions/TicketEventLogger.php
+/app/Conversations/Agent/Controllers/ConversationTagsController.php
+/modules/ai/src/AiAgent/Conversations/GroupReplyEngine.php
+/app/Conversations/Actions/GetTicketMilestones.php
+/resources/client/dashboard/conversation.ts
+/resources/client/dashboard/conversations/conversation-page/details-sidebar/ticket-milestones-panel.tsx

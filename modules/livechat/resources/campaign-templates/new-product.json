@@ -1,0 +1,58 @@
+{
+  "name": "new-product",
+  "label": "Announce new product",
+  "width": 240,
+  "height": 277.5,
+  "conditions": [
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnCurrentPage",
+      "value": "15",
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {
+      "id": "z6ZXoa",
+      "name": "image",
+      "value": {
+        "size": "stretch",
+        "radius": "none",
+        "width": 480,
+        "height": 315,
+        "url": "images/campaigns/new-product.png"
+      }
+    },
+    {
+      "id": "P5eHNs",
+      "name": "text",
+      "value": {
+        "text": "<p>We have just launched our new mobile app \ud83d\udcf1</p>"
+      }
+    },
+    {
+      "id": "H0soGA",
+      "name": "button",
+      "value": {
+        "label": "iOS",
+        "action": "openUrl",
+        "actionValue": "https://google.com"
+      }
+    },
+    {
+      "id": "2wmOO1",
+      "name": "button",
+      "value": {
+        "label": "Android",
+        "action": "openUrl",
+        "actionValue": "https://google.com"
+      }
+    }
+  ]
+}

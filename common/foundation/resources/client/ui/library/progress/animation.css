@@ -1,0 +1,40 @@
+.progress-circle {
+  overflow: hidden;
+
+  &.indeterminate {
+    animation: spinner-spin 0.8s ease infinite;
+  }
+
+  .progress-circle-track {
+    height: 100%;
+    stroke: rgb(var(--be-fg-base) / var(--be-divider-opacity));
+  }
+  .progress-circle-fill {
+    height: 100%;
+    stroke: rgb(var(--progress-circle-fill-color, var(--be-primary)));
+    transition: all cubic-bezier(0.4, 0, 0.2, 1) 0.5s;
+  }
+}
+
+@keyframes spinner-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.be-top-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: rgb(var(--be-primary));
+  z-index: 2147483647;
+  transition:
+    width 300ms ease-out,
+    opacity 150ms 150ms ease-in;
+  transform: translate3d(0, 0, 0);
+}

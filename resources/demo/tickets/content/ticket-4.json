@@ -1,0 +1,53 @@
+[
+  {
+    "author": "user",
+    "body": "Hello, I recently deactivated my account but realized I still need access to some of the data I had stored there, particularly a few reports I generated last month. Is it possible to recover my account or at least retrieve those files?",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "group.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Hi there! Thanks for contacting us. If the deactivation was within the last 30 days, we can usually recover both your account and any stored data. Can you please confirm the email address linked to the deactivated account?",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Yes, the email address associated with the account was melissa.ward@example.com. I deactivated it about two weeks ago and just realized I forgot to download my analytics reports.",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "agent.changed"
+  },
+  {
+    "author": "agent",
+    "body": "Thanks, Melissa. I’ve located your account, and it’s eligible for reactivation. I’ve re-enabled it temporarily so you can log in and retrieve your data. Please make sure to download anything you need within the next 7 days.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "Great, thank you! I’ve logged in and started downloading my reports. I’m attaching one here just to confirm that it looks as expected. Let me know if anything seems off.",
+    "type": "message",
+    "hasAttachments": true
+  },
+  {
+    "author": "agent",
+    "body": "The report looks good on our end. It appears everything was preserved correctly. Let me know if you run into any issues while retrieving your files.",
+    "type": "message"
+  },
+  {
+    "author": "user",
+    "body": "All set now. I’ve downloaded everything I need. Thanks again for your help—really appreciate the quick response!",
+    "type": "message"
+  },
+  {
+    "type": "event",
+    "author": "system",
+    "content": "closed.byAgent"
+  }
+]

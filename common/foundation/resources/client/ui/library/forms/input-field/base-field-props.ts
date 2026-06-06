@@ -1,0 +1,46 @@
+import {InputSize} from '@ui/forms/input-field/input-size';
+import React, {ElementType, HTMLProps, ReactElement, ReactNode} from 'react';
+
+export interface BaseFieldProps {
+  disabled?: boolean;
+  required?: boolean;
+  labelSuffix?: ReactNode;
+  labelSuffixPosition?: 'spaced' | 'inline';
+  autoFocus?: boolean;
+  autoSelectText?: boolean;
+  labelElementType?: ElementType;
+  label?: ReactNode;
+  labelPosition?: 'top' | 'side';
+  labelClassName?: string;
+  labelDisplay?: string;
+  inputDisplay?: string;
+  wrapLabel?: boolean;
+  size?: InputSize;
+  inputRadius?: 'rounded-full' | 'rounded' | 'rounded-none' | string;
+  inputRing?: string;
+  inputFontSize?: string;
+  inputBorder?: string;
+  inputShadow?: string;
+  invalid?: boolean;
+  errorMessage?: ReactNode;
+  description?: ReactNode;
+  descriptionPosition?: 'top' | 'bottom';
+  flexibleHeight?: boolean;
+  // usually an icon or icon button, displayed inside the input
+  startAdornment?: React.ReactNode;
+  endAdornment?: React.ReactNode;
+  adornmentPosition?: string;
+  // usually a text button, displayed side by side with input
+  startAppend?: ReactElement;
+  endAppend?: ReactElement;
+  className?: string;
+  inputWrapperClassName?: string;
+  inputClassName?: string;
+  unstyled?: boolean;
+  background?: 'bg-transparent' | 'bg-alt' | 'bg' | 'bg-white' | 'bg-elevated';
+  inputTestId?: string;
+}
+
+export interface BaseFieldPropsWithDom<T>
+  extends BaseFieldProps,
+    Omit<HTMLProps<T>, 'label' | 'size' | 'ref' | 'children'> {}

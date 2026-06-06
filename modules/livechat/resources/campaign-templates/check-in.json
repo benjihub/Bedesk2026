@@ -1,0 +1,42 @@
+{
+  "name": "check-in",
+  "label": "Check in with new users",
+  "width": 300,
+  "height": 302,
+  "appearance": {"size": "md", "textSize": "sm"},
+  "conditions": [
+    {
+      "name": "signedUp",
+      "value": 3,
+      "operator": "gt",
+      "match_type": "all"
+    },
+    {
+      "name": "isReturningVisitor",
+      "value": null,
+      "operator": "eq",
+      "match_type": "all"
+    },
+    {
+      "name": "timeOnCurrentPage",
+      "value": "10",
+      "operator": "gt",
+      "match_type": "all"
+    }
+  ],
+  "content": [
+    {"id": "s3ISCS", "name": "agent", "value": {"agentId": 0}},
+    {
+      "id": "tDdmN2",
+      "name": "text",
+      "value": {
+        "text": "<p>Can you believe that two weeks have passed by already? \ud83d\ude48</p><p>We hope that you feel right at home here but we wanted to ask, is there anything we can do for you?</p><p>Let's chat! \ud83d\udc47</p>"
+      }
+    },
+    {
+      "id": "a7j0U-",
+      "name": "messageInput",
+      "value": {"placeholder": "Write a message..."}
+    }
+  ]
+}

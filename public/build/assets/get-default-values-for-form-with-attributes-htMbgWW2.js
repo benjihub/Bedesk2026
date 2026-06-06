@@ -1,0 +1,2 @@
+function h(g,l){const f={};return g.forEach(e=>{var s,c,o,n;e&&("value"in e?f[e.key]=e.value:e.format==="rating"||e.format==="switch"?f[e.key]=!1:e.format==="checkboxGroup"?((c=(s=e.config)==null?void 0:s.options)==null||c[0].value,f[e.key]=[]):(n=(o=e.config)==null?void 0:o.options)!=null&&n.length&&(l!=null&&l.selectFirstValue)||(f[e.key]=""))}),f}export{h as g};
+//# sourceMappingURL=get-default-values-for-form-with-attributes-htMbgWW2.js.map

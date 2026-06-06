@@ -1,0 +1,37 @@
+import {FormTextField} from '@ui/forms/input-field/text-field/text-field';
+import {Trans} from '@ui/i18n/trans';
+import {Fragment} from 'react';
+
+export interface SesCredentialsProps {
+  isInvalid: boolean;
+}
+export function SesCredentials({isInvalid}: SesCredentialsProps) {
+  return (
+    <Fragment>
+      <FormTextField
+        size="sm"
+        invalid={isInvalid}
+        className="mb-20"
+        name="server.ses_key"
+        label={<Trans message="SES key" />}
+        required
+      />
+      <FormTextField
+        size="sm"
+        invalid={isInvalid}
+        className="mb-20"
+        name="server.ses_secret"
+        label={<Trans message="SES secret" />}
+        required
+      />
+      <FormTextField
+        size="sm"
+        invalid={isInvalid}
+        name="server.ses_region"
+        label={<Trans message="SES region" />}
+        placeholder="us-east-1"
+        required
+      />
+    </Fragment>
+  );
+}
