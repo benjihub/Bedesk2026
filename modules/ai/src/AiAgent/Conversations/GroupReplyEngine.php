@@ -3,10 +3,9 @@
 namespace Ai\AiAgent\Conversations;
 
 use Ai\AiAgent\Conversations\Streaming\EventEmitter;
+use Ai\AiAgent\Models\AiAgent as AiAgentRecord;
 use Ai\AiAgent\Models\AiAgentSession;
-use App\Conversations\Actions\TicketEventLogger;
 use Ai\AiAgent\Models\UserConversationMemory;
-use App\Conversations\Agent\Actions\ConversationsAssigner;
 use App\Conversations\Events\ConversationMessageCreated;
 use App\Conversations\Messages\CreateConversationMessage;
 use App\Conversations\Models\Conversation;
@@ -14,8 +13,6 @@ use App\Conversations\Models\ConversationItem;
 use App\Team\Models\GroupAiAgentSettings;
 use App\Team\Models\GroupPromotion;
 use App\Team\Models\GroupSettings;
-use Common\Tags\Tag;
-use GuzzleHttp\Client;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -955,7 +952,28 @@ PROMPT;
     private const DEFAULT_AGG_WINDOW_MS = 5000;
     private const AGG_MIN_THRESHOLD = 2;
 
-    public function __construct(protected Conversation $conversation) {}
+    protected Conversation $conversation;
+    private AIClientService $aiClient;
+    private AIParsingManager $parser;
+    private AIRoutingManager $routingManager;
+    private AIIntentManager $intentManager;
+    private AIUserIdFlowManager $userIdFlowManager;
+    private AIDepositWithdrawManager $depositWithdrawManager;
+    private AIHandoffManager $handoffManager;
+    private AISoftSellManager $softSellManager;
+
+    public function __construct(Conversation $conversation)
+    {
+        $this->conversation = $conversation;
+        $this->aiClient = new AIClientService();
+        $this->parser = new AIParsingManager();
+        $this->routingManager = new AIRoutingManager($this->aiClient, $this->parser);
+        $this->intentManager = new AIIntentManager($conversation);
+        $this->userIdFlowManager = new AIUserIdFlowManager($conversation);
+        $this->depositWithdrawManager = new AIDepositWithdrawManager($conversation);
+        $this->handoffManager = new AIHandoffManager($conversation);
+        $this->softSellManager = new AISoftSellManager($conversation);
+    }
 
     public function handleLatestUserMessage(): void
     {
@@ -1129,89 +1147,18 @@ PROMPT;
                 // best-effort only
             }
 
-            $this->handoffToSupportIfNeeded($replyObj, $replyText);
+            $this->handoffManager->handoffToSupportIfNeeded($replyObj, $replyText);
         } catch (\Throwable $e) {
             Log::error('Failed to persist groupReply bot message: ' . $e->getMessage());
         }
     }
 
-    private function handoffToSupportIfNeeded(array $replyObj, string $replyText): void
-    {
-        // Only handoff if AI is currently handling this conversation.
-        if ($this->conversation->assigned_to !== Conversation::ASSIGNED_BOT) {
-            return;
-        }
 
-        $intent = (string) Arr::get($replyObj, 'intent', '');
-        $processing = (bool) Arr::get($replyObj, 'context.processing', false);
-
-        // We treat the explicit "processing / wait" state as a support handoff trigger.
-        // (Avoid relying on text heuristics so normal replies don't accidentally escalate.)
-        $isWaitState =
-            $processing ||
-            in_array($intent, ['processing', 'still_processing'], true);
-
-        if (!$isWaitState) {
-            return;
-        }
-
-        // Mark in session context so we can restore AI control later.
-        $session = AiAgentSession::firstOrCreate(
-            ['conversation_id' => $this->conversation->id],
-            ['status' => AiAgentSession::STATUS_ACTIVE, 'context' => []],
-        );
-        $context = is_array($session->context ?? null) ? $session->context : [];
-        if (!empty($context['support_handoff_active'])) {
-            return; // already handed off
-        }
-
-        $context['support_handoff_active'] = true;
-        $context['support_handoff_intent'] = $intent !== '' ? $intent : null;
-        $context['support_handoff_user_id'] = Arr::get($replyObj, 'context.userId');
-        $context['support_handoff_started_at'] = now()->toISOString();
-        $session->context = $context;
-        $session->save();
-
-        // Add a visible tag for agents so it shows in inbox/list.
-        // Store as slug + display name so UI can show friendly text.
-        try {
-            $tag = Tag::firstOrCreate(
-                ['name' => 'need-human-support'],
-                ['display_name' => 'Need human support', 'type' => 'custom'],
-            );
-            $this->conversation->attachTag($tag->id);
-            app(TicketEventLogger::class)->logNeedHumanSupport(
-                conversation: $this->conversation,
-                metadata: [
-                    'intent' => $context['support_handoff_intent'],
-                    'tag_id' => $tag->id,
-                    'user_id' => $context['support_handoff_user_id'],
-                ],
-                createdAt: $context['support_handoff_started_at'],
-            );
-        } catch (\Throwable $ignore) {
-            // best-effort only
-        }
-
-        // Assign to support (this also broadcasts updates so agents get notified).
-        try {
-            $this->conversation->loadMissing('group');
-            ConversationsAssigner::assignConversationToFirstAvailableAgent(
-                $this->conversation,
-                addEvent: true,
-            );
-        } catch (\Throwable $e) {
-            Log::warning('Failed to handoff conversation to support', [
-                'conversation_id' => $this->conversation->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 
     private function buildGroupAwareReply(string $userText, ?string $lastUserText = null): array
     {
-        $aiSettings = $this->resolveAiSettings();
-        $systemPrompt = $this->composeSystemPromptFull($aiSettings);
+        $aiSettings = (new AIGroupSettingsResolver())->resolve($this->conversation->group_id);
+        $systemPrompt = (new AIGreetingAndPromptComposer($this->conversation))->compose($aiSettings);
 
         // Provide short-term memory to the LLM: last N messages before the current one.
         // We intentionally exclude the current user message from DB history to avoid duplication.
@@ -1254,7 +1201,7 @@ PROMPT;
         // Determine whether an active human handoff should be ignored/resumed.
         // If agent has set conversation status to PENDING or the human-support
         // tag was removed/closed, we clear the previous lock and resume normal AI.
-        $shouldResume = $this->shouldResumeAfterHandoff();
+        $shouldResume = $this->handoffManager->shouldResumeAfterHandoff();
 
         // If we are already in processing state for a USER-ID flow (claim/turnover/etc.)
         // and handoff has NOT been cleared, short-circuit and always return the wait message
@@ -1283,7 +1230,7 @@ PROMPT;
         // If we should resume, clear any support handoff state in session context.
         if ($processingLock && $shouldResume) {
             // Clear support handoff flags and reset flow context so AI returns to normal.
-            $this->clearSupportHandoff();
+            $this->handoffManager->clearSupportHandoff();
             $wasAwaiting = false;
             $lastUserIdFlowType = null;
             $processingLock = false;
@@ -1382,82 +1329,9 @@ PROMPT;
         return $result;
     }
 
-    /**
-     * Should AI resume normal operation after a human support handoff?
-     * Conditions:
-     * - Conversation status is set to PENDING by an agent, or
-     * - Human-support tag ("need-human-support") is no longer present.
-     */
-    private function shouldResumeAfterHandoff(): bool
-    {
-        try {
-            // Check session context flag
-            $session = $this->conversation->aiAgentSession()->first();
-            $context = is_array($session?->context ?? null) ? $session->context : [];
-            if (empty($context['support_handoff_active'])) {
-                return true; // no active handoff, proceed normally
-            }
 
-            // If conversation has been reassigned back to the bot, resume immediately.
-            // This provides a manual override so agents can return control to AI
-            // without needing to change status or tags first.
-            try {
-                $this->conversation->refresh();
-                if (($this->conversation->assigned_to ?? null) === Conversation::ASSIGNED_BOT) {
-                    return true;
-                }
-            } catch (\Throwable $_) { /* ignore */ }
 
-            // Check conversation status
-            $this->conversation->loadMissing(['status', 'tags']);
-            $statusCategory = (int) ($this->conversation->status_category ?? 0);
-            $isPending = ($statusCategory === Conversation::STATUS_PENDING);
 
-            // Check presence of human-support tag
-            $hasNeedHumanTag = false;
-            try {
-                $hasNeedHumanTag = (bool) ($this->conversation->tags?->contains(function ($tag) {
-                    return ($tag->name ?? null) === 'need-human-support';
-                }) ?? false);
-            } catch (\Throwable $_) { /* ignore */ }
-
-            // Resume if pending OR tag removed
-            return $isPending || !$hasNeedHumanTag;
-        } catch (\Throwable $_) {
-            // If we can't determine, do not block AI
-            return true;
-        }
-    }
-
-    /**
-     * Clear support handoff state in session so AI can continue.
-     */
-    private function clearSupportHandoff(): void
-    {
-        try {
-            $session = $this->conversation->aiAgentSession()->firstOrCreate(
-                ['conversation_id' => $this->conversation->id],
-                ['status' => AiAgentSession::STATUS_ACTIVE, 'context' => []],
-            );
-            $context = is_array($session->context ?? null) ? $session->context : [];
-            unset($context['support_handoff_active']);
-            unset($context['support_handoff_intent']);
-            unset($context['support_handoff_user_id']);
-            $context['support_handoff_finished_at'] = now()->toISOString();
-            $session->context = $context;
-            $session->save();
-
-            // Best-effort: remove the visible human-support tag so UI returns to normal.
-            try {
-                $tag = Tag::where('name', 'need-human-support')->first();
-                if ($tag && method_exists($this->conversation, 'detachTag')) {
-                    $this->conversation->detachTag($tag->id);
-                }
-            } catch (\Throwable $_) { /* ignore */ }
-        } catch (\Throwable $_) {
-            // best effort only
-        }
-    }
 
     /**
      * Build an OpenAI-compatible messages array from recent conversation turns.
@@ -1706,27 +1580,7 @@ PROMPT;
      */
     private function looksLikeDepositProblem(string $text): bool
     {
-        $t = mb_strtolower($text);
-        $hasDepositWord = (bool) preg_match('/\b(deposit|depo|deponya|top\s?up|topup|isi\s*saldo)\b/u', $t);
-        if (!$hasDepositWord) {
-            return false;
-        }
-
-        // Problem cues: "gak masuk", "belum masuk", "pending", "lama",
-        // "hilang", "error", "salah kirim", etc.
-        $problemCues = [
-            'ga masuk', 'gak masuk', 'gk masuk', 'tdk masuk', 'tidak masuk',
-            'belum masuk', 'blm masuk', 'pending', 'lama', 'lambat', 'lemot',
-            'hilang', 'hangus', 'error', 'gagal', 'bug', 'salah deposit',
-            'salah depo', 'salah kirim', 'batalin', 'batalkan', 'refund',
-        ];
-        foreach ($problemCues as $cue) {
-            if (str_contains($t, $cue)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->depositWithdrawManager->looksLikeDepositProblem($text);
     }
 
     /**
@@ -1736,36 +1590,7 @@ PROMPT;
      */
     private function getLatestBankProofForConversation(): array
     {
-        try {
-            // IMPORTANT: do not just read the latest user message, because
-            // users often send follow-up text after uploading proof. In that
-            // case the newest message has no bank_proof and we would
-            // incorrectly think proof is missing.
-            $messages = ConversationItem::query()
-                ->where('conversation_id', $this->conversation->id)
-                ->where('type', 'message')
-                ->where('author', Conversation::AUTHOR_USER)
-                ->orderByDesc('id')
-                ->limit(30)
-                ->get();
-
-            if ($messages->isEmpty()) {
-                return [null, null];
-            }
-
-            foreach ($messages as $message) {
-                $data = is_array($message->data ?? null) ? $message->data : [];
-                $bankProof = is_array($data['bank_proof'] ?? null) ? $data['bank_proof'] : null;
-
-                if ($bankProof) {
-                    return [$bankProof, $message->id];
-                }
-            }
-
-            return [null, null];
-        } catch (\Throwable $_) {
-            return [null, null];
-        }
+        return $this->depositWithdrawManager->getLatestBankProofForConversation();
     }
 
     /**
@@ -1774,33 +1599,7 @@ PROMPT;
      */
     private function markDepositCheckResultOnUserMemory(string $status): void
     {
-        try {
-            $session = $this->conversation->aiAgentSession()->first();
-            $ctx = is_array($session?->context ?? null) ? $session->context : [];
-            $username = isset($ctx['confirmed_username']) && is_string($ctx['confirmed_username']) && trim($ctx['confirmed_username']) !== ''
-                ? trim($ctx['confirmed_username'])
-                : null;
-            $groupId = $ctx['confirmed_group_id'] ?? $this->conversation->group_id ?? null;
-
-            if (!$username || !$groupId) {
-                return;
-            }
-
-            $memory = UserConversationMemory::firstOrCreate([
-                'username' => $username,
-                'group_id' => (int) $groupId,
-            ]);
-
-            $notes = is_array($memory->notes ?? null) ? $memory->notes : [];
-            $notes['last_deposit_check'] = [
-                'status' => $status,
-                'updated_at' => now()->toISOString(),
-            ];
-            $memory->notes = $notes;
-            $memory->save();
-        } catch (\Throwable $_) {
-            // best-effort only
-        }
+        $this->depositWithdrawManager->markDepositCheckResultOnUserMemory($status);
     }
 
     /**
@@ -1809,80 +1608,7 @@ PROMPT;
      */
     private function checkUsernameWithBigman(string $username): ?bool
     {
-        $username = trim($username);
-        if ($username === '') {
-            return null;
-        }
-
-        $groupId = $this->conversation->group_id;
-        $endpoint = 'https://bigman.app/api/username/check';
-        $token = null;
-
-        try {
-            if ($groupId) {
-                $record = GroupAiAgentSettings::query()
-                    ->where('group_id', $groupId)
-                    ->first();
-                $overrides = $record?->overrides ?? [];
-                if (!is_array($overrides)) {
-                    $overrides = [];
-                }
-                $bigman = $overrides['bigman'] ?? [];
-                if (is_array($bigman)) {
-                    // Prefer dedicated usernameToken if set, otherwise
-                    // fall back to the general BigMan token.
-                    if (isset($bigman['usernameToken']) && is_string($bigman['usernameToken']) && trim($bigman['usernameToken']) !== '') {
-                        $token = trim($bigman['usernameToken']);
-                    } elseif (isset($bigman['token']) && is_string($bigman['token']) && trim($bigman['token']) !== '') {
-                        $token = trim($bigman['token']);
-                    }
-
-                    $endpoint = $bigman['usernameEndpoint'] ?? $endpoint;
-                }
-            }
-        } catch (\Throwable $_) {
-            // ignore config errors, fall back to defaults
-        }
-
-        if (!is_string($endpoint) || trim($endpoint) === '') {
-            return null;
-        }
-
-        try {
-            $client = new Client(['timeout' => 8]);
-            $headers = [
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-            ];
-            if (is_string($token) && trim($token) !== '') {
-                $headers['Authorization'] = 'Bearer ' . trim($token);
-            }
-
-            $response = $client->post($endpoint, [
-                'headers' => $headers,
-                'json' => ['username' => $username],
-            ]);
-
-            $status = $response->getStatusCode();
-            $raw = (string) $response->getBody();
-            $data = null;
-            try {
-                $decoded = json_decode($raw, true);
-                if (is_array($decoded)) {
-                    $data = $decoded;
-                }
-            } catch (\Throwable $_) {
-                $data = null;
-            }
-
-            if ($status === 200 && is_array($data) && array_key_exists('success', $data)) {
-                return (bool) $data['success'];
-            }
-
-            return null;
-        } catch (\Throwable $_) {
-            return null;
-        }
+        return $this->depositWithdrawManager->checkUsernameWithBigman($username);
     }
 
     private function resolveAiSettings(): array
@@ -2129,101 +1855,22 @@ PROMPT;
 
     private function detectIntent(string $text): string
     {
-        $t = mb_strtolower((string) $text);
-
-        // If user mentions promotions and explicit claim/cara-klaim keywords,
-        // treat it as a user-id collection flow so we can ask for USER ID before proceeding.
-        $mentionsPromo = (bool) preg_match('/\b(promo|promosi|bonus|event|voucher|kode|code)\b/u', $t);
-        $mentionClaimCore = (bool) preg_match('/\b(klaim|claim)\b/u', $t) || $this->containsApprox($this->tokenizeWords($text), ['klaim','claim'], 2) || (bool) preg_match('/\b(klem|klim|kleim)\b/u', $t);
-        $mentionClaimPhrases = (bool) preg_match('/\b(cara\s+(klaim|claim|redeem|tebus)|how\s+to\s+claim|claim\s+promo|claim\s+code|kode\s+promo)\b/u', $t);
-        $actionWithPromo = (bool) preg_match('/\b(ambil|ikut|join|daftar|redeem|tebus)\b/u', $t) && $mentionsPromo;
-        if ($mentionsPromo && ($mentionClaimCore || $mentionClaimPhrases || $actionWithPromo)) {
-            return 'userid_collection';
-        }
-
-        if (
-            preg_match('/\b(deposit|depo|deponya|dp|top\s?up|topup|isi saldo)\b/u', $t) ||
-            preg_match('/\b(withdraw|wd|tarik|penarikan|cair|withdrawal)\b/u', $t) ||
-            preg_match('/\b(turnover|rollover|omset|perputaran|kelipatan|wager|wr)\b/u', $t) ||
-            preg_match('/\b(lupa password|reset password|ganti sandi|lupa pass|reset pass|ga bisa login|gk bisa login)\b/u', $t)
-        ) {
-            return 'userid_collection';
-        }
-
-        if (preg_match('/\b(daftar|register|buat akun|signup|registrasi)\b/u', $t)) return 'register';
-        if (preg_match('/\b(promo|promosi|bonus|event)\b/u', $t)) return 'promotion';
-        if (preg_match('/\brtp\b/u', $t)) return 'rtp';
-        if (preg_match('/\b(game|games|slot|slots|gacor|permainan|daftar game|game apa|slot apa)\b/u', $t)) return 'games';
-        return 'general';
+        return $this->intentManager->detectIntent($text);
     }
 
     private function extractUserId(?string $text): ?string
     {
-        if (!$text) return null;
-        $str = trim($text);
-        if ($str === '') return null;
-
-        if (preg_match('/\b(user\s*id|userid|user_id|uid|account\s*id|cid)\b[:=\s-]*([A-Za-z0-9_-]{2,30})/i', $str, $m)) {
-            return trim($m[2] ?? '') ?: null;
-        }
-
-        $parts = preg_split('/\s+/', $str) ?: [];
-        $parts = array_values(array_filter($parts, fn($p) => trim((string)$p) !== ''));
-        if (count($parts) === 1) {
-            $word = trim($parts[0]);
-            if (preg_match('/^[A-Za-z0-9_-]{3,20}$/', $word)) {
-                $lower = mb_strtolower($word);
-                // Avoid treating common greetings as USER IDs.
-                if (in_array($lower, ['halo', 'hai', 'hi', 'hello', 'hey', 'assalamualaikum', 'salam', 'p'], true)) {
-                    return null;
-                }
-                return $word;
-            }
-        }
-
-        return null;
+        return $this->userIdFlowManager->extractUserId($text);
     }
 
     private function replaceUserIdPlaceholder(?string $template, ?string $userId): ?string
     {
-        if (!$template || !$userId) return $template;
-        return preg_replace(
-            [
-                '/\{\{\s*(user[_\s-]*id|userid|cid)\s*\}\}/i',
-                '/\[\[\s*(user[_\s-]*id|userid|cid)\s*\]\]/i',
-                '/%\s*(user[_\s-]*id|userid|cid)\s*%/i',
-            ],
-            $userId,
-            $template,
-        );
+        return $this->userIdFlowManager->replaceUserIdPlaceholder($template, $userId);
     }
 
     private function resolveWaitMessage(array $aiSettings, ?string $userId): string
     {
-        $candidates = [];
-        $customWait = Arr::get($aiSettings, 'customMessages.waitMessage');
-        if (is_string($customWait) && trim($customWait) !== '') {
-            $candidates[] = trim($customWait);
-        }
-        $waitMessage = Arr::get($aiSettings, 'waitMessage');
-        if (is_string($waitMessage) && trim($waitMessage) !== '') {
-            $candidates[] = trim($waitMessage);
-        }
-
-        $selected = null;
-        foreach ($candidates as $c) {
-            if ($c !== '') { $selected = $c; break; }
-        }
-
-        if ($selected) {
-            return (string) $this->replaceUserIdPlaceholder($selected, $userId);
-        }
-
-        if ($userId) {
-            return 'Oke, tunggu sebentar ya — lagi dicek. 🙏';
-        }
-
-        return 'Siap, permintaan kamu lagi dicek. Mohon ditunggu sebentar ya.';
+        return $this->userIdFlowManager->resolveWaitMessage($aiSettings, $userId);
     }
 
     private function containsWaitCue(?string $text): bool
@@ -2234,379 +1881,57 @@ PROMPT;
 
     private function isAffirmativeReply(?string $text): bool
     {
-        $t = mb_strtolower(trim((string) $text));
-        if ($t === '') return false;
-
-        // Accept broad natural confirmations such as:
-        // "ya bos", "iya kak", "ok", "oke siap", "yes", "betul", "lanjut", "gas".
-        return (bool) preg_match(
-            '/\b(ya|iya|iyaa|yaa|yes|yep|yup|betul|benar|bener|ok|oke|okey|sip|siap|setuju|lanjut|gas|go\s*ahead|confirm(ed)?)\b/u',
-            $t,
-        );
+        return $this->userIdFlowManager->isAffirmativeReply($text);
     }
 
     private function isNegativeReply(?string $text): bool
     {
-        $t = mb_strtolower(trim((string) $text));
-        if ($t === '') return false;
-
-        // Accept broad natural rejections such as:
-        // "tidak", "enggak", "ga", "bukan", "jangan", "nope", "ngga jadi".
-        return (bool) preg_match(
-            '/\b(tidak|tdk|tak|bukan|salah|ga|gak|gk|engga|enggak|ngga|nggak|no|nope|not\s*now|jangan|ga\s*jadi|gak\s*jadi|nggak\s*jadi)\b/u',
-            $t,
-        );
+        return $this->userIdFlowManager->isNegativeReply($text);
     }
 
-    /**
-     * Classify answer for: "Apakah nama akun terdaftar berbeda dengan nama
-     * di bukti transfer?".
-     * Returns:
-     * - true  => user says DIFFERENT name
-     * - false => user says SAME / NOT different
-     * - null  => unclear
-     */
     private function classifyDiffNameReply(?string $text): ?bool
     {
-        $t = mb_strtolower(trim((string) $text));
-        if ($t === '') return null;
-
-        // Strong explicit forms first.
-        if (preg_match('/\b(berbeda|beda|lain|different|tidak\s+sama|tak\s+sama|ga\s+sama|gak\s+sama|nggak\s+sama)\b/u', $t)) {
-            return true;
-        }
-        if (preg_match('/\b(sama|same|identik|serupa|cocok)\b/u', $t)) {
-            return false;
-        }
-
-        // Fall back to generic yes/no intent.
-        if ($this->isAffirmativeReply($t)) return true;
-        if ($this->isNegativeReply($t)) return false;
-
-        // Last fallback: use an LLM normalizer to interpret free-form
-        // conversational replies that don't contain explicit keywords.
-        // Example: "kayaknya beda deh", "setauku sama", "nama rekening orang lain".
-        $llmDecision = $this->classifyDiffNameReplyWithLlm($t);
-        if (is_bool($llmDecision)) {
-            return $llmDecision;
-        }
-
-        return null;
-    }
-
-    /**
-     * LLM-backed classifier for the question:
-     * "Apakah nama akun terdaftar berbeda dengan nama di bukti transfer?"
-     *
-     * Returns:
-     * - true  => user means DIFFERENT
-     * - false => user means SAME / NOT different
-     * - null  => uncertain or LLM unavailable
-     */
-    private function classifyDiffNameReplyWithLlm(string $text): ?bool
-    {
-        $apiKey = config('services.openai.api_key') ?? env('OPENAI_API_KEY');
-        if (!$apiKey) {
-            return null;
-        }
-
-        $system = 'You classify user replies for a binary support question. '
-            . 'Question context: "Is the registered account name different from the transfer name?" '
-            . 'Return JSON ONLY with keys: decision, confidence. '
-            . 'decision must be one of: "different", "same", "unclear". '
-            . 'confidence must be a number 0-1. '
-            . 'Do not include markdown or extra text.';
-
-        $user = 'User reply: "' . $text . '"\n\n'
-            . 'Interpret intent semantically, including slang/typos. '
-            . 'Examples: "sama kok" => same, "beda" => different, '
-            . '"nama rekening orang lain" => different.';
-
-        try {
-            $messages = [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => $user],
-            ];
-
-            $raw = $this->callOpenAiChatCompletion($messages, 0.0, 80);
-            $parsed = $this->tryParseJson((string) $raw);
-            if (!is_array($parsed)) {
-                return null;
-            }
-
-            $decision = isset($parsed['decision']) && is_string($parsed['decision'])
-                ? trim(mb_strtolower((string) $parsed['decision']))
-                : '';
-            $confidence = isset($parsed['confidence']) && is_numeric($parsed['confidence'])
-                ? max(0.0, min(1.0, (float) $parsed['confidence']))
-                : 0.0;
-
-            // Require moderate confidence to avoid random misroutes.
-            if ($confidence < 0.55) {
-                return null;
-            }
-
-            if ($decision === 'different') return true;
-            if ($decision === 'same') return false;
-            return null;
-        } catch (\Throwable $_) {
-            return null;
-        }
+        return $this->userIdFlowManager->classifyDiffNameReply($text);
     }
 
     private function tokenizeWords(string $text): array
     {
-        $lower = mb_strtolower($text);
-        $parts = preg_split('/[^a-z0-9_]+/iu', $lower) ?: [];
-        return array_values(array_filter($parts, fn($w) => is_string($w) && trim($w) !== ''));
+        return $this->intentManager->tokenizeWords($text);
     }
 
     private function containsApprox(array $tokens, array $keywords, int $maxDistance = 1): bool
     {
-        foreach ($tokens as $t) {
-            $t = is_string($t) ? trim($t) : '';
-            if ($t === '') continue;
-            foreach ($keywords as $kw) {
-                $kw = is_string($kw) ? mb_strtolower(trim($kw)) : '';
-                if ($kw === '') continue;
-                if ($t === $kw) return true;
-                if (function_exists('levenshtein')) {
-                    $d = levenshtein($t, $kw);
-                    if ($d <= $maxDistance) return true;
-                }
-            }
-        }
-        return false;
+        return $this->intentManager->containsApprox($tokens, $keywords, $maxDistance);
     }
 
     private function isFrustrationMessage(string $text): bool
     {
-        $lower = mb_strtolower($text);
-        if ($lower === '') return false;
-
-        // Profanity / insults commonly seen in frustration vents
-        $hasProfanity = (bool) preg_match('/\b(anjing|kontol|tolol|bangsat|babi|goblok|memek|kampret|sampah|busuk|jelek)\b/u', $lower);
-
-        // Strong negative complaint cues
-        $hasComplaint = (bool) preg_match('/\b(kalah|rugi|ga\s*dapet|gak\s*dapet|nggak\s*dapet|tidak\s*dapat|gak\s*masuk|tidak\s*masuk|nyangkut|error|susah|kecewa|marah|emosi|situs\s*busuk|parah)\b/u', $lower);
-
-        // Patterns indicating multiple deposits with frustration tone (e.g., "2x deposit")
-        $hasDepositCountComplaint = (bool) preg_match('/\b((\d+)\s*x\s*deposit|deposit\s*(\d+)\s*x|\d+\s*x\s*depo|\d+\s*x\s*deponya|udah\s*deposit|sudah\s*deposit|udah\s*deponya|sudah\s*deponya)\b/u', $lower);
-
-        // Excess punctuation can be a signal of anger
-        $hasStrongPunct = (bool) preg_match('/[!?.]{2,}/u', $text);
-
-        return $hasProfanity || $hasComplaint || $hasDepositCountComplaint || $hasStrongPunct;
+        return $this->intentManager->isFrustrationMessage($text);
     }
 
     private function detectUserIdFlowType(string $text): string
     {
-        $lower = mb_strtolower($text);
-        $tokens = $this->tokenizeWords($text);
-        if ($lower === '') return 'generic';
-        // Claim/promo detection (with typo tolerance)
-        $hasExplicitClaim = (bool) preg_match('/\b(klaim|claim)\b/u', $lower);
-        $hasFuzzyClaim = $this->containsApprox($tokens, ['klaim','claim'], 2) || in_array('klem', $tokens, true) || in_array('klim', $tokens, true) || in_array('kleim', $tokens, true);
-        $hasClaimPhrases = (bool) preg_match('/\b(cara\s+(klaim|claim|redeem|tebus)|how\s+to\s+claim|claim\s+promo|kode\s+promo)\b/u', $lower);
-        $hasActionWithPromo = (
-            (bool) preg_match('/\b(ambil|ikut|join|daftar|redeem|tebus)\b/u', $lower)
-            && (bool) preg_match('/\b(promo|promosi|bonus|voucher|kode|code)\b/u', $lower)
-        );
-        if ($hasExplicitClaim || $hasFuzzyClaim || $hasClaimPhrases || $hasActionWithPromo) {
-            return 'claim';
-        }
-        // QRIS / payment code detection
-        if (preg_match('/\b(qris|qris\b|kode\s+qris|nomor\s+qris|qr\s?code|qr\s?code)\b/u', $lower)) return 'qris';
-        // Turnover / bonus progress detection (with typo tolerance and abbreviations)
-        $hasTurnoverKeyword =
-            preg_match('/\b(turnover|turn\s*over|rollover|omset|omzet|perputaran|kelipatan|wager|wr)\b/u', $lower) ||
-            // Contextual TO (abbrev) usage like "cek to", "progres to", "sisa to", "to saya"
-            (preg_match('/\bto\b/u', $lower) && preg_match('/\b(cek|progress|progres|bonus|sisa|udah|berapa|tinggal|rollover|wr|wager)\b/u', $lower));
-        $hasFuzzyTurnover =
-            $this->containsApprox($tokens, ['turnover','rollover','omset','omzet','wager','perputaran','kelipatan'], 2);
-        if ($hasTurnoverKeyword || $hasFuzzyTurnover) return 'turnover';
-        
-        // Withdraw: be MUCH stricter so that generic trust/legitimacy
-        // questions like "WD dibayar atau tidak?" do not get forced into
-        // USER-ID + queue flows. Only treat as a withdraw flow if there is
-        // clear evidence of a PROBLEM with a specific withdrawal.
-        
-        // Check for primary withdraw keywords (excluding "cair" which is handled separately)
-        $hasPrimaryWithdrawKeyword = preg_match('/\b(withdraw|withdrawal|wd|w\/?d|cashout|tarik|penarikan|tarik\s*(saldo|dana)|penarikan\s*(saldo|dana))\b/u', $lower)
-            || (bool) preg_match('/\bwd[a-z]{0,3}\b/u', $lower);
-        // Fuzzy tolerance for common typos like "withdrw", "withdaw", "wthdraw", "wtihdraw"
-        $hasFuzzyWithdraw = $this->containsApprox($tokens, ['withdraw','withdrawal'], 2)
-            || in_array('withdrw', $tokens, true) || in_array('withdaw', $tokens, true)
-            || in_array('wthdraw', $tokens, true) || in_array('wtihdraw', $tokens, true);
-        if ($hasFuzzyWithdraw) { $hasPrimaryWithdrawKeyword = true; }
-        
-        // Check for "cair" separately since it's too broad and catches bonus questions
-        $hasCair = preg_match('/\b(cair|pencairan|cairkan|cairin)\b/u', $lower);
-        
-        // If we have "cair" but no primary withdraw keyword, check context carefully
-        if ($hasCair && !$hasPrimaryWithdrawKeyword) {
-            // "cair" with bonus/weekly/rebate context → NOT a withdraw flow
-            $cairInBonusContext = preg_match('/\b(bonus\s+(mingguan|weekly)|weekly\s+bonus|rebate\s+mingguan|mingguan\s+rebate|rebate)\b/u', $lower);
-            
-            if ($cairInBonusContext) {
-                // This is a bonus question, not a withdraw problem
-                return 'generic';
-            }
-            
-            // "cair" should only trigger withdraw if combined with these specific context words
-            $cairInWithdrawContext = preg_match('/\b(wd|withdraw|withdrawal|nominal|pending|gagal|lama)\b/u', $lower);
-            
-            if (!$cairInWithdrawContext) {
-                // "cair" alone without withdraw context → generic
-                return 'generic';
-            }
-            
-            // If we reach here, "cair" is in withdraw context, so treat as withdraw keyword
-            $hasPrimaryWithdrawKeyword = true;
-        }
-        
-        if ($hasPrimaryWithdrawKeyword || ($hasCair && !preg_match('/\b(bonus|weekly|rebate|mingguan)\b/u', $lower))) {
-            $hasProblemKeyword =
-                preg_match('/\b(gagal|pending|error|macet|stuck|ditolak|tolak|batal|cancel|antri|antre|queue|proses|diproses|process|processing)\b/u', $lower) ||
-                preg_match('/\b(tidak\s+masuk|tdk\s+masuk|belum\s+masuk|blm\s+masuk)\b/u', $lower) ||
-                preg_match('/\b(tidak\s+cair|tdk\s+cair|belum\s+cair|blm\s+cair)\b/u', $lower) ||
-                preg_match('/\b(udah\s+lama|sudah\s+lama|kok\s+belum|kapan\s+masuk|kapan\s+cair)\b/u', $lower) ||
-                // "cannot / why can't" — e.g. "kenapa tidak bisa wd", "ga bisa wd", "tidak bisa withdraw"
-                preg_match('/\b(tidak\s+bisa|tdk\s+bisa|ga\s+bisa|gak\s+bisa|gk\s+bisa|ngga\s+bisa|nggak\s+bisa|can\'?t|cannot)\b/u', $lower) ||
-                // question words directly before a withdraw keyword signal a complaint ("kenapa wd", "why wd")
-                preg_match('/\b(kenapa|knapa|knp|mengapa|why)\b/u', $lower);
-
-            if ($hasProblemKeyword) {
-                return 'withdraw';
-            }
-            // Otherwise, treat as a generic/trust question and let the LLM
-            // answer via SITE LEGITIMACY rules without backend forcing a
-            // wait/queue response.
-            return 'generic';
-        }
-        // Deposit detection with mild typo tolerance
-        $hasDepositKeyword = preg_match('/\b(deposit|depo|deponya|dp|top\s?up|topup|isi saldo)\b/u', $lower)
-            || $this->containsApprox($tokens, ['deposit','depo','deponya'], 1);
-        if ($hasDepositKeyword) return 'deposit';
-        // Password reset/login issues with typo tolerance
-        $tokens = $this->tokenizeWords($text);
-        $hasForgot = (bool) preg_match('/\b(lupa|forgot|kelupaan)\b/u', $lower);
-        $hasReset = (bool) preg_match('/\b(reset|ganti|ubah|change|update|perbarui|perbaharui)\b/u', $lower);
-        $hasLoginProblem = (bool) preg_match('/\b(ga\s*bisa\s*(login|masuk)|gk\s*bisa\s*(login|masuk)|gak\s*bisa\s*(login|masuk)|tidak\s*bisa\s*(login|masuk))\b/u', $lower)
-            || (bool) preg_match('/\b(login\s*(error|gagal|susah))\b/u', $lower)
-            || (bool) preg_match('/\b(masuk\s*(error|gagal|susah))\b/u', $lower);
-        $hasAccountLocked = (bool) preg_match('/\b(akun\s*(terkunci|kunci|locked))\b/u', $lower) || (bool) preg_match('/\b(account\s*(locked|blocked))\b/u', $lower);
-        $pwApprox = $this->containsApprox($tokens, ['password','pass','pw','sandi','pswd','passwd','passwrd'], 2) ||
-            ($this->containsApprox($tokens, ['kata'], 0) && $this->containsApprox($tokens, ['sandi'], 2));
-        // Explicit phrase catch for common shorthand and order variants
-        $hasLupaPass = (bool) preg_match('/\blupa\s+(password|pass|pas|pw|kata\s*sandi|sandi)\b/u', $lower) ||
-                       (bool) preg_match('/\b(password|pass|pw|sandi|kata\s*sandi)\s*lupa\b/u', $lower);
-        $hasResetPwPhrase = (bool) preg_match('/\b(reset|ubah|ganti|change|update|perbarui|perbaharui)\s*(password|pass|pw|sandi|kata\s*sandi)\b/u', $lower);
-        $hasCantRememberPw = (bool) preg_match('/\b(ga|gk|gak|tidak|tak)\s*(ingat|inget|remember)\s*(password|pass|pw|sandi|kata\s*sandi)\b/u', $lower)
-            || (bool) preg_match('/\b(can\'?t\s*remember)\s*(password|pass|pw)\b/u', $lower)
-            || (bool) preg_match('/\b(forgotten)\s*(password|pass|pw)\b/u', $lower);
-        // Explicit phrase catch for common Indonesian shorthand like "lupa pass" / "lupa pw"
-        $hasWrongPw = (bool) preg_match('/\b(password|sandi|pw|pass)\s*(salah|wrong|incorrect|error)\b/u', $lower);
-        if ($hasLupaPass || $hasResetPwPhrase || $hasCantRememberPw || ($pwApprox && ($hasForgot || $hasReset)) || $hasLoginProblem || $hasAccountLocked || $hasWrongPw) {
-            return 'password_reset';
-        }
-        return 'generic';
+        return $this->userIdFlowManager->detectUserIdFlowType($text);
     }
 
     private function resolveUserIdRequestMessage(string $flowType = 'generic', array $aiSettings = []): string
     {
-        $templates = Arr::get($aiSettings, 'userIdRequestTemplates', []);
-        if (!is_array($templates)) $templates = [];
-
-        $get = function (string $key): ?string {
-            $value = self::DEFAULT_USER_ID_REQUEST_TEMPLATES[$key] ?? null;
-            if (is_string($value) && trim($value) === '') {
-                $value = null;
-            }
-            return $value;
-        };
-
-        $override = function (string $key) use ($templates, $get): string {
-            $candidate = $templates[$key] ?? null;
-            if (is_string($candidate) && trim($candidate) !== '') {
-                return trim($candidate);
-            }
-            return (string) ($get($key) ?? '');
-        };
-
-        $selected = match ($flowType) {
-            'turnover' => $override('turnover'),
-            'withdraw' => $override('withdraw'),
-            'deposit' => $override('deposit'),
-            'password_reset' => $override('password_reset'),
-            'claim' => $override('claim'),
-            'qris' => $override('qris'),
-            default => $override('generic'),
-        };
-
-        try {
-            // Log which template was selected and whether it came from overrides or defaults.
-            $isOverride = isset($templates[$flowType]) && is_string($templates[$flowType]) && trim((string) $templates[$flowType]) !== '';
-            Log::debug('ai-agent.userIdTemplateSelected', [
-                'conversation_id' => $this->conversation->id ?? null,
-                'flow' => $flowType,
-                'selected' => mb_substr((string) $selected, 0, 500),
-                'override_applied' => $isOverride,
-            ]);
-        } catch (\Throwable $_) { /* ignore */ }
-
-        return $selected;
+        return $this->userIdFlowManager->resolveUserIdRequestMessage($flowType, $aiSettings);
     }
 
     private function replyAsksForUserId(?string $text): bool
     {
-        if (!$text) return false;
-        return (bool) preg_match('/\buser\s*id\b|\buserid\b|\bcid\b|\buid\b/i', mb_strtolower($text));
+        return $this->userIdFlowManager->replyAsksForUserId($text);
     }
 
-    /**
-     * Decide whether a given detected flow type requires enforcing a USER-ID prompt.
-     * - Always yes: claim, withdraw, deposit, qris, password_reset
-     * - Turnover: only if the text looks account-specific (e.g., "cek TO saya", "progres TO akun")
-     * - Otherwise: no
-     */
     private function requiresUserIdFlow(string $flowType, string $text): bool
     {
-        $flowType = is_string($flowType) ? trim(mb_strtolower($flowType)) : '';
-        // cancel-deposit requests are handled separately and should escalate
-        // directly; they should never trigger a USER-ID prompt. Detect here
-        // early so generic enforcement doesn't interfere.
-        if ($flowType === 'deposit') {
-            $lower = mb_strtolower($text);
-            $cancelWords = '(batal|batalkan|dibatalkan|batalin|dibatalin|cancel|ga jadi|gak jadi|nggak jadi|tidak jadi|tak jadi)';
-            $depositWords = '(deposit|depo|deponya|dp)';
-            if (preg_match("/\b{$cancelWords}\b/u", $lower) && preg_match("/\b{$depositWords}\b/u", $lower)) {
-                return false;
-            }
-        }
-        if (in_array($flowType, ['claim','withdraw','deposit','qris','password_reset'], true)) {
-            // Do not enforce USER-ID when the user is clearly venting/frustrated.
-            if (in_array($flowType, ['deposit','withdraw'], true) && $this->isFrustrationMessage($text)) {
-                return false;
-            }
-            return true;
-        }
-        if ($flowType === 'turnover') {
-            return $this->looksAccountSpecificTurnover($text);
-        }
-        return false;
+        return $this->userIdFlowManager->requiresUserIdFlow($flowType, $text);
     }
 
     private function looksAccountSpecificTurnover(string $text): bool
     {
-        $lower = mb_strtolower($text);
-        $hasTurnoverMarker = (bool) preg_match('/\b(turnover|rollover|wr|wager|to)\b/u', $lower);
-        if (!$hasTurnoverMarker) return false;
-        $hasPronounOrAccount = (bool) preg_match('/\b(saya|aku|gue|gua|gw|akun|user\s*id|userid|uid|cid|id|my|akun\s*saya|akun\s*aku)\b/u', $lower);
-        $hasCheckProgressCue = (bool) preg_match('/\b(cek|check|progress|progres|sisa|status|udah|sudah|tinggal)\b/u', $lower);
-        // Only treat as account-specific if the user references their account/pronoun,
-        // or uses check/progress cues (but exclude generic rule questions like "berapa TO")
-        return $hasPronounOrAccount || $hasCheckProgressCue;
+        return $this->userIdFlowManager->looksAccountSpecificTurnover($text);
     }
 
     /**
@@ -2681,699 +2006,41 @@ PROMPT;
             $sessionContext = [];
         }
 
-        // If we previously extracted a bank-proof image but it lacked a
-        // 'from_account_name', we ask the user for that name and then resend
-        // the proof to BigMan.
-        $awaitingBankProofName = isset($sessionContext['awaiting_bank_proof_account_name']) && $sessionContext['awaiting_bank_proof_account_name'];
-        if ($awaitingBankProofName) {
-            $candidate = trim($rawText);
-            $isAck = (bool) preg_match('/\b(ok|oke|sip|siap|ya|iya|yes|terima\s+kasih|thanks)\b/i', $candidate);
-            $words = preg_split('/\s+/', $candidate, -1, PREG_SPLIT_NO_EMPTY);
-            $looksLikeName = !$isAck && is_array($words) && count($words) >= 2 && mb_strlen($candidate) > 3;
+        $confirmedUsername = isset($sessionContext['confirmed_username'])
+            && is_string($sessionContext['confirmed_username'])
+            && trim($sessionContext['confirmed_username']) !== ''
+            ? trim($sessionContext['confirmed_username'])
+            : null;
+        $awaitingUsername = (bool) ($sessionContext['awaiting_username'] ?? false);
 
-            if (!$looksLikeName) {
-                return [
-                    'reply' => 'Bos, tolong kirim nama rekening pengirim nya',
-                    'intent' => 'info',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => false,
-                        'awaiting_bank_proof_account_name' => true,
-                    ],
-                ];
-            }
-
-            // Update the stored bank_proof message with the provided name.
-            $bpMessageId = $sessionContext['bank_proof_message_id'] ?? null;
-            if (is_numeric($bpMessageId)) {
-                try {
-                    $bpMessage = ConversationItem::find((int) $bpMessageId);
-                    if ($bpMessage) {
-                        $data = is_array($bpMessage->data ?? null) ? $bpMessage->data : [];
-                        $bankProof = is_array($data['bank_proof'] ?? null) ? $data['bank_proof'] : [];
-                        $bankProof['from_account_name'] = $candidate;
-                        $bankProof['_suppress_bigman_auto_reply'] = true;
-                        $data['bank_proof'] = $bankProof;
-                        $bpMessage->data = $data;
-                        $bpMessage->save();
-
-                        // Clear the waiting flag so we don't ask again.
-                        $sessionContext['awaiting_bank_proof_account_name'] = false;
-                        unset($sessionContext['bank_proof_message_id']);
-                        if ($session) {
-                            $session->context = $sessionContext;
-                            $session->save();
-                        }
-
-                        // Retry the BigMan check with the updated proof.
-                        try {
-                            (new \App\Conversations\Jobs\SendBankProofToBigman(
-                                $this->conversation->id,
-                                $bpMessage->id,
-                                $bankProof,
-                            ))->handle();
-                        } catch (\Throwable $_) {
-                            // ignore; the job will log errors
-                        }
-
-                        // Read back latest gateway decision so this turn returns
-                        // one consistent message only.
-                        $bpMessage->refresh();
-                        $postData = is_array($bpMessage->data ?? null) ? $bpMessage->data : [];
-                        $postBankProof = is_array($postData['bank_proof'] ?? null) ? $postData['bank_proof'] : [];
-                        $postBigman = is_array($postBankProof['bigman'] ?? null) ? $postBankProof['bigman'] : [];
-                        $postAccepted = $postBigman['accepted'] ?? null;
-                        $postTicketNotFound = (bool) ($postBigman['ticket_not_found'] ?? false);
-
-                        if ($postTicketNotFound && $postAccepted !== true) {
-                            return [
-                                'reply' => 'Bos, nama akun terdaftar berbeda dengan nama di bukti transfer? Kalau iya jawab "ya", kalau tidak jawab "tidak".',
-                                'intent' => 'info',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                    'awaiting_bigman_diff_name' => true,
-                                ],
-                            ];
-                        }
-
-                        return [
-                            'reply' => 'Sip bos, nama rekeningnya sudah aku catat. Aku kirim ulang bukti ke sistem untuk dicek lagi ya.',
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                            ],
-                        ];
-                    }
-                } catch (\Throwable $_) {
-                    // ignore
-                }
-            }
-
-            // If we couldn't locate the proof message, just clear and continue.
-            $sessionContext['awaiting_bank_proof_account_name'] = false;
-            unset($sessionContext['bank_proof_message_id']);
-            if ($session) {
-                $session->context = $sessionContext;
-                $session->save();
-            }
+        $bpResult = $this->depositWithdrawManager->handleAwaitingBankProofAccountName($rawText, $sessionContext, $session);
+        if ($bpResult) {
+            return $bpResult;
         }
 
         // If BigMan previously reported no ticket found, we ask whether registered
         // name differs from transfer name, and if yes we retry with is_diff_name=true.
-        $awaitingDiffName = isset($sessionContext['awaiting_bigman_diff_name']) && $sessionContext['awaiting_bigman_diff_name'];
-        if ($awaitingDiffName) {
-            $candidate = trim($rawText);
-            $diffDecision = $this->classifyDiffNameReply($candidate);
-            $isYes = ($diffDecision === true);
-            $isNo = ($diffDecision === false);
-
-            if (!$isYes && !$isNo) {
-                $retries = isset($sessionContext['awaiting_bigman_diff_name_retries']) && is_numeric($sessionContext['awaiting_bigman_diff_name_retries'])
-                    ? (int) $sessionContext['awaiting_bigman_diff_name_retries']
-                    : 0;
-                $sessionContext['awaiting_bigman_diff_name_retries'] = $retries + 1;
-                if ($session) {
-                    $session->context = $sessionContext;
-                    $session->save();
-                }
-
-                return [
-                    'reply' => 'Apakah nama akun terdaftar berbeda dengan nama di bukti transfer? Bisa jawab "beda" atau "sama" (boleh juga "ya" / "tidak").',
-                    'intent' => 'info',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => false,
-                        'awaiting_bigman_diff_name' => true,
-                    ],
-                ];
-            }
-
-            // Clear the waiting flag so we don't keep asking.
-            $sessionContext['awaiting_bigman_diff_name'] = false;
-            $bpMessageId = $sessionContext['bigman_diff_proof_message_id'] ?? null;
-            unset($sessionContext['bigman_diff_proof_message_id']);
-            unset($sessionContext['awaiting_bigman_diff_name_retries']);
-            if ($session) {
-                $session->context = $sessionContext;
-                $session->save();
-            }
-
-            if ($isYes && is_numeric($bpMessageId)) {
-                try {
-                    $bpMessage = ConversationItem::find((int) $bpMessageId);
-                    if ($bpMessage) {
-                        $data = is_array($bpMessage->data ?? null) ? $bpMessage->data : [];
-                        $bankProof = is_array($data['bank_proof'] ?? null) ? $data['bank_proof'] : [];
-                        $bankProof['is_diff_name'] = true;
-                        $bankProof['_suppress_bigman_auto_reply'] = true;
-                        $data['bank_proof'] = $bankProof;
-                        $bpMessage->data = $data;
-                        $bpMessage->save();
-
-                        try {
-                            (new \App\Conversations\Jobs\SendBankProofToBigman(
-                                $this->conversation->id,
-                                $bpMessage->id,
-                                $bankProof,
-                            ))->handle();
-                        } catch (\Throwable $_) {
-                            // ignore; the job will log errors
-                        }
-
-                        // Read latest result and choose one final reply.
-                        $bpMessage->refresh();
-                        $postData = is_array($bpMessage->data ?? null) ? $bpMessage->data : [];
-                        $postBankProof = is_array($postData['bank_proof'] ?? null) ? $postData['bank_proof'] : [];
-                        $postBigman = is_array($postBankProof['bigman'] ?? null) ? $postBankProof['bigman'] : [];
-                        $postAccepted = $postBigman['accepted'] ?? null;
-                        $postTicketNotFound = (bool) ($postBigman['ticket_not_found'] ?? false);
-
-                        if ($postTicketNotFound && $postAccepted !== true) {
-                            return [
-                                'reply' => 'Bos, sudah dicek ulang termasuk skenario nama berbeda, tapi tiket tetap tidak ditemukan di sistem. Berarti tiketnya memang tidak ada.',
-                                'intent' => 'info',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                ],
-                            ];
-                        }
-
-                        return [
-                            'reply' => 'Oke bos, aku kirim ulang bukti ke sistem dengan flag nama berbeda. Tunggu sebentar ya.',
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                            ],
-                        ];
-                    }
-                } catch (\Throwable $_) {
-                    // ignore
-                }
-            }
-
-            return [
-                'reply' => 'Oke bos, kalau masih belum ketemu berarti tiket memang tidak ada. Coba hubungi CS kalau butuh bantuan lebih lanjut.',
-                'intent' => 'info',
-                'context' => [
-                    'awaitingUserId' => false,
-                    'processing' => false,
-                ],
-            ];
+        $diffResult = $this->depositWithdrawManager->handleAwaitingBigmanDiffName($rawText, $sessionContext, $session);
+        if ($diffResult) {
+            return $diffResult;
         }
 
-        // Prefer USER ID provided via pre-chat form (materialized on user
-        // model as `username`) as the first source of truth. If we don't
-        // yet have a confirmed_username in session, but the conversation's
-        // user already has a non-empty username, treat it as confirmed and
-        // persist it into AiAgentSession context so deposit flows and CRM
-        // can reuse it without re-asking.
-        $prechatUsername = null;
-        try {
-            $convUser = $this->conversation->user;
-            if ($convUser && is_string($convUser->username ?? null) && trim($convUser->username) !== '') {
-                $prechatUsername = trim($convUser->username);
-            }
-        } catch (\Throwable $_) {
-            $prechatUsername = null;
-        }
-
-        $confirmedUsername = isset($sessionContext['confirmed_username']) && is_string($sessionContext['confirmed_username']) && trim($sessionContext['confirmed_username']) !== ''
-            ? trim($sessionContext['confirmed_username'])
-            : null;
-
-        if ($confirmedUsername === null && $prechatUsername !== null) {
-            $isValid = $this->checkUsernameWithBigman($prechatUsername);
-            if ($isValid === true) {
-                $confirmedUsername = $prechatUsername;
-                $sessionContext['confirmed_username'] = $prechatUsername;
-                $sessionContext['confirmed_group_id'] = $this->conversation->group_id ?? null;
-                try {
-                    $sessionContext['username_confirmed_at'] = now()->toISOString();
-                } catch (\Throwable $_) {
-                    $sessionContext['username_confirmed_at'] = now();
-                }
-
-                if ($session) {
-                    try {
-                        $session->context = $sessionContext;
-                        $session->save();
-                    } catch (\Throwable $_) {
-                        // best-effort only
-                    }
-                }
-            }
-        }
-
-        $awaitingUsername = (bool) ($sessionContext['awaiting_username'] ?? false);
-        $pendingUsername = isset($sessionContext['pending_username_candidate']) && is_string($sessionContext['pending_username_candidate']) && trim($sessionContext['pending_username_candidate']) !== ''
-            ? trim($sessionContext['pending_username_candidate'])
-            : null;
-
-        // Guard against session bleed: if an old deposit_check/awaiting_username
-        // state exists but the user clearly switched to another operational flow
-        // (claim/withdraw/turnover/qris/password reset), clear deposit context
-        // before entering the username/proof handlers below.
-        $depositCheckContext = is_array($sessionContext['deposit_check'] ?? null) ? $sessionContext['deposit_check'] : ['stage' => 'idle'];
-        $depositStageContext = is_string($depositCheckContext['stage'] ?? null) ? $depositCheckContext['stage'] : 'idle';
-        $currentFlowType = $this->detectUserIdFlowType($rawText);
-        $routerSaysDepositNow = ($routeHint === 'operational' && $coarseIntent === 'deposit');
-        $localSaysDepositNow = $this->looksLikeDepositProblem($rawText) || $currentFlowType === 'deposit';
-        $hasUserIdCandidateNow = is_string($this->extractUserId($rawText)) && trim((string) $this->extractUserId($rawText)) !== '';
-        $isSimpleConfirmNow = $this->isAffirmativeReply($rawText) || $this->isNegativeReply($rawText);
-        $explicitNonDepositFlow = in_array($currentFlowType, ['claim','withdraw','turnover','qris','password_reset'], true) || $coarseIntent === 'promo_claim';
-
-        if (
-            ($awaitingUsername || in_array($depositStageContext, ['awaiting_proof', 'awaiting_gateway_result'], true))
-            && !$localSaysDepositNow
-            && $explicitNonDepositFlow
-            && !$hasUserIdCandidateNow
-            && !$isSimpleConfirmNow
-        ) {
-            $sessionContext['awaiting_username'] = false;
-            unset($sessionContext['pending_username_candidate']);
-            $sessionContext['deposit_check'] = ['stage' => 'idle', 'last_status' => 'topic_switched'];
-            if ($session) {
-                try {
-                    $session->context = $sessionContext;
-                    $session->save();
-                } catch (\Throwable $_) {
-                    // best-effort only
-                }
-            }
-            $awaitingUsername = false;
-            $pendingUsername = null;
-        }
-
-        if ($session && !$resumeMode && !$wasAwaiting) {
-            // If we are already waiting for a username, handle confirmation
-            // or re-extraction before touching any other logic.
-            if ($awaitingUsername) {
-                $lowerNorm = mb_strtolower($normalizedText);
-                $isYes = $this->isAffirmativeReply($lowerNorm);
-                $isNo = $this->isNegativeReply($lowerNorm);
-
-                // Track current deposit_check stage (if any) so that when a
-                // username is finally confirmed in the middle of a deposit
-                // problem flow, we can immediately advance to the next
-                // deposit_check step (requesting proof) instead of stopping
-                // at a generic "username noted" reply.
-                $depositCheck = is_array($sessionContext['deposit_check'] ?? null)
-                    ? $sessionContext['deposit_check']
-                    : null;
-                $depositStage = is_string($depositCheck['stage'] ?? null)
-                    ? $depositCheck['stage']
-                    : 'idle';
-
-                if ($pendingUsername && ($isYes || $isNo)) {
-                    if ($isYes) {
-                        // Validate username with BigMan before treating it
-                        // as confirmed. If BigMan explicitly says it does
-                        // not exist, ask user to re-check and resend. If the
-                        // check fails (null), fall back to trusting user so
-                        // we don't block support flows.
-                        $isValid = $this->checkUsernameWithBigman($pendingUsername);
-                        if ($isValid === false) {
-                            unset($sessionContext['pending_username_candidate']);
-                            $sessionContext['awaiting_username'] = true;
-                            try {
-                                $session->context = $sessionContext;
-                                $session->save();
-                            } catch (\Throwable $_) {}
-
-                            return [
-                                'reply' => 'Bos, username "' . $pendingUsername . '" belum ketemu di sistem. Coba dicek lagi dan kirim USER ID yang benar ya (1 kata, tanpa spasi).',
-                                'intent' => 'info',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                ],
-                            ];
-                        }
-
-                        $sessionContext['confirmed_username'] = $pendingUsername;
-                        $sessionContext['confirmed_group_id'] = $this->conversation->group_id ?? null;
-                        try {
-                            $sessionContext['username_confirmed_at'] = now()->toISOString();
-                        } catch (\Throwable $_) {
-                            $sessionContext['username_confirmed_at'] = now();
-                        }
-                        $sessionContext['awaiting_username'] = false;
-                        unset($sessionContext['pending_username_candidate']);
-
-                        // If this confirmation is part of an ongoing
-                        // deposit_check flow that was waiting on
-                        // username (stage=awaiting_username), advance the
-                        // state machine to awaiting_proof and immediately
-                        // ask for the deposit proof instead of stopping at
-                        // a generic username-noted reply.
-                        if ($depositStage === 'awaiting_username') {
-                            if (!is_array($depositCheck)) {
-                                $depositCheck = [];
-                            }
-                            $depositCheck['stage'] = 'awaiting_proof';
-                            $depositCheck['last_status'] = null;
-                            $sessionContext['deposit_check'] = $depositCheck;
-                        }
-
-                        try {
-                            $session->context = $sessionContext;
-                            $session->save();
-                        } catch (\Throwable $_) {}
-
-                        if ($depositStage === 'awaiting_username') {
-                            $reply = 'Sip bosku, username kamu "' . $pendingUsername . '" sudah aku catat. ' . $tplAskProof;
-                            return [
-                                'reply' => $reply,
-                                'intent' => 'deposit',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                    'confirmed_username' => $pendingUsername,
-                                    'deposit_check' => [
-                                        'stage' => 'awaiting_proof',
-                                    ],
-                                ],
-                            ];
-                        }
-
-                        $reply = 'Sip bosku, username kamu "' . $pendingUsername . '" ya. Noted, kalau ada apa-apa sebut aja, aku bantu. 🙌';
-                        return [
-                            'reply' => $reply,
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                                'confirmed_username' => $pendingUsername,
-                            ],
-                        ];
-                    }
-
-                    // user said no, ask them to resend the correct username
-                    unset($sessionContext['pending_username_candidate']);
-                    $sessionContext['awaiting_username'] = true;
-                    try {
-                        $session->context = $sessionContext;
-                        $session->save();
-                    } catch (\Throwable $_) {}
-
-                    return [
-                        'reply' => 'Oke bosku, kirim lagi username akun yang benar ya (1 kata, tanpa spasi).',
-                        'intent' => 'info',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                        ],
-                    ];
-                }
-
-                // Not a clear yes/no, try to extract a username directly.
-                $maybeUser = $this->extractUserId($rawText);
-                if (is_string($maybeUser) && trim($maybeUser) !== '') {
-                    $candidate = trim($maybeUser);
-
-                    // If BigMan confirms this username, skip the
-                    // yes/no question and accept it immediately.
-                    $isValid = $this->checkUsernameWithBigman($candidate);
-                    if ($isValid === true) {
-                        $sessionContext['confirmed_username'] = $candidate;
-                        $sessionContext['confirmed_group_id'] = $this->conversation->group_id ?? null;
-                        try {
-                            $sessionContext['username_confirmed_at'] = now()->toISOString();
-                        } catch (\Throwable $_) {
-                            $sessionContext['username_confirmed_at'] = now();
-                        }
-                        $sessionContext['awaiting_username'] = false;
-                        unset($sessionContext['pending_username_candidate']);
-
-                        // Same handshake as above: if a deposit_check flow
-                        // was waiting on username, move it to
-                        // awaiting_proof and guide the user to upload their
-                        // deposit screenshot.
-                        if ($depositStage === 'awaiting_username') {
-                            if (!is_array($depositCheck)) {
-                                $depositCheck = [];
-                            }
-                            $depositCheck['stage'] = 'awaiting_proof';
-                            $depositCheck['last_status'] = null;
-                            $sessionContext['deposit_check'] = $depositCheck;
-                        }
-
-                        try {
-                            $session->context = $sessionContext;
-                            $session->save();
-                        } catch (\Throwable $_) {}
-
-                        if ($depositStage === 'awaiting_username') {
-                            return [
-                                'reply' => 'Sip bosku, username kamu "' . $candidate . '" sudah aku catat. ' . $tplAskProof,
-                                'intent' => 'deposit',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                    'confirmed_username' => $candidate,
-                                    'deposit_check' => [
-                                        'stage' => 'awaiting_proof',
-                                    ],
-                                ],
-                            ];
-                        }
-
-                        return [
-                            'reply' => 'Sip bosku, username kamu "' . $candidate . '" sudah terdaftar dan aku catat ya. Kalau ada apa-apa sebut aja, aku bantu. 🙌',
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                                'confirmed_username' => $candidate,
-                            ],
-                        ];
-                    }
-
-                    // If BigMan says it does NOT exist, ask user to
-                    // re-check and send a correct one instead of
-                    // asking yes/no.
-                    if ($isValid === false) {
-                        $sessionContext['awaiting_username'] = true;
-                        unset($sessionContext['pending_username_candidate']);
-                        try {
-                            $session->context = $sessionContext;
-                            $session->save();
-                        } catch (\Throwable $_) {}
-
-                        return [
-                            'reply' => 'Bos, username "' . $candidate . '"Belum ketemu. Coba kirim USER ID yang benar ya (1 kata, tanpa spasi).',
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                            ],
-                        ];
-                    }
-
-                    // If BigMan check failed (null), fall back to old
-                    // behavior and ask for yes/no confirmation.
-                    $sessionContext['pending_username_candidate'] = $candidate;
-                    $sessionContext['awaiting_username'] = true;
-                    try {
-                        $session->context = $sessionContext;
-                        $session->save();
-                    } catch (\Throwable $_) {}
-
-                    return [
-                        'reply' => 'Username kamu "' . $candidate . '" ya bosku? Kalau benar jawab "iya", kalau salah bilang "bukan" dan kirim yang benar.',
-                        'intent' => 'info',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                        ],
-                    ];
-                }
-
-                // Still awaiting username, gently re-ask.
-                return [
-                    'reply' => 'Biar aku bisa bantu maksimal, kirim UserID akun kamu ya bos (1 kata, tanpa spasi).',
-                    'intent' => 'info',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => false,
-                    ],
-                ];
-            }
-
-            // No confirmed username yet: decide whether to start username flow
-            // (Note: we force asking even if a username was previously confirmed)
-            $forceAskUsername = true;
-            if ($confirmedUsername === null || $forceAskUsername) {
-                // Only start early username collection for clear DEPOSIT
-                // PROBLEM messages. Non-deposit inquiries (withdraw,
-                // password reset, turnover checks, promo-claim, QRIS, etc.)
-                // should continue to use their existing template-based
-                // flows and USER-ID prompts.
-                // We also avoid hijacking generic deposit questions such as
-                // "berapa minimal deposito" – those should be answered with
-                // the stored limits rather than triggering the proof workflow.
-                // If the user is cancelling a deposit, skip the username
-                // collection flow entirely and let the deposit-check state
-                // machine (below) handle the cancellation and handoff.
-                $_cancelLower = mb_strtolower($rawText);
-                $_isCancelDeposit = (
-                    preg_match('/\b(batal|batalkan|dibatalkan|batalin|dibatalin|cancel|ga jadi|gak jadi|nggak jadi|tidak jadi|tak jadi)\b/u', $_cancelLower) &&
-                    preg_match('/\b(deposit|depo|deponya|dp)\b/u', $_cancelLower)
-                );
-
-                // Use both the OpenAI router signal AND the local
-                // looksLikeDepositProblem() heuristic so a single misfired
-                // router response doesn't silently skip the deposit flow.
-                // Important: never trust router-only "deposit" if local flow
-                // typing disagrees (e.g. claim text classified as deposit by
-                // the router due prior context).
-                $localFlowTypeForDepositEntry = $this->detectUserIdFlowType($rawText);
-                $_routerSaysDeposit = (
-                    $routeHint === 'operational'
-                    && $coarseIntent === 'deposit'
-                    && $localFlowTypeForDepositEntry === 'deposit'
-                );
-                $_localSaysDeposit  = $this->looksLikeDepositProblem($rawText);
-
-                if (
-                    ($_routerSaysDeposit || $_localSaysDeposit)
-                    && !$_isCancelDeposit
-                ) {
-                    // if the text is not a complaint but mentions limits, send
-                    // the configured deposit boundaries and bail out early.
-                    if (! $this->looksLikeDepositProblem($rawText)) {
-                        if (preg_match('/\b(minimal|min\b|berapa)\s+depo/i', $rawText)) {
-                            $limits = Arr::get($aiSettings, 'depositLimits', []);
-                            $min = isset($limits['min']) ? number_format($limits['min'], 0, ',', '.') : null;
-                            $max = isset($limits['max']) ? number_format($limits['max'], 0, ',', '.') : null;
-                            $parts = [];
-                            if ($min !== null) {
-                                $parts[] = 'minimal Rp ' . $min;
-                            }
-                            if ($max !== null) {
-                                $parts[] = 'maksimal Rp ' . $max;
-                            }
-                            $reply = $parts ? 'Di situs ini ' . implode(' dan ', $parts) : 'Saya tidak punya informasi batas deposit.';
-
-                            return [
-                                'reply' => $reply,
-                                'intent' => 'deposit',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                ],
-                            ];
-                        }
-                    }
-
-                    // Mark that a deposit_check flow has started and is
-                    // currently waiting on username. This lets us later
-                    // detect, at the moment of username confirmation, that
-                    // we should immediately advance to requesting deposit
-                    // proof instead of stopping at a generic confirmation.
-                    $depositCheck = is_array($sessionContext['deposit_check'] ?? null)
-                        ? $sessionContext['deposit_check']
-                        : [];
-                    $currentStage = is_string($depositCheck['stage'] ?? null)
-                        ? $depositCheck['stage']
-                        : 'idle';
-                    if ($currentStage === 'idle') {
-                        $depositCheck['stage'] = 'awaiting_username';
-                        $depositCheck['last_status'] = $depositCheck['last_status'] ?? null;
-                        $sessionContext['deposit_check'] = $depositCheck;
-                    }
-
-                    $maybeUser = $this->extractUserId($rawText);
-                    if (is_string($maybeUser) && trim($maybeUser) !== '') {
-                        $candidate = trim($maybeUser);
-
-                        // If BigMan confirms this username, accept it
-                        // immediately without a yes/no confirmation.
-                        $isValid = $this->checkUsernameWithBigman($candidate);
-                        if ($isValid === true) {
-                            $sessionContext['confirmed_username'] = $candidate;
-                            $sessionContext['confirmed_group_id'] = $this->conversation->group_id ?? null;
-                            try {
-                                $sessionContext['username_confirmed_at'] = now()->toISOString();
-                            } catch (\Throwable $_) {
-                                $sessionContext['username_confirmed_at'] = now();
-                            }
-                            $sessionContext['awaiting_username'] = false;
-                            unset($sessionContext['pending_username_candidate']);
-                            try {
-                                $session->context = $sessionContext;
-                                $session->save();
-                            } catch (\Throwable $_) {}
-
-                            return [
-                                'reply' => 'Sip bosku, username kamu "' . $candidate . '" sudah terdaftar dan aku catat ya. Kalau ada apa-apa sebut aja, aku bantu. 🙌',
-                                'intent' => 'info',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                    'confirmed_username' => $candidate,
-                                ],
-                            ];
-                        }
-
-                        if ($isValid === false) {
-                            $sessionContext['awaiting_username'] = true;
-                            unset($sessionContext['pending_username_candidate']);
-                            try {
-                                $session->context = $sessionContext;
-                                $session->save();
-                            } catch (\Throwable $_) {}
-
-                            return [
-                                'reply' => 'Bos, username "' . $candidate . '" Belum ketemu. Coba kirim USER ID yang benar ya (1 kata, tanpa spasi).',
-                                'intent' => 'info',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => false,
-                                ],
-                            ];
-                        }
-
-                        // If BigMan check failed (null), fall back to
-                        // asking for manual yes/no confirmation.
-                        $sessionContext['awaiting_username'] = true;
-                        $sessionContext['pending_username_candidate'] = $candidate;
-                        try {
-                            $session->context = $sessionContext;
-                            $session->save();
-                        } catch (\Throwable $_) {}
-
-                        return [
-                            'reply' => 'Bos, biar gak salah, ini username kamu: "' . $candidate . '" ya? Kalau benar jawab "iya", kalau salah kirim yang benar.',
-                            'intent' => 'info',
-                            'context' => [
-                                'awaitingUserId' => false,
-                                'processing' => false,
-                            ],
-                        ];
-                    }
-
-                    // Ask for username up front using configured template.
-                    $sessionContext['awaiting_username'] = true;
-                    try {
-                        $session->context = $sessionContext;
-                        $session->save();
-                    } catch (\Throwable $_) {}
-
-                    return [
-                        'reply' => $tplAskUsername,
-                        'intent' => 'info',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                        ],
-                    ];
-                }
-            }
+        $usernameResult = $this->userIdFlowManager->handleUsernameCollectionFlow(
+            $rawText,
+            $normalizedText,
+            $aiSettings,
+            $routeHint,
+            $coarseIntent,
+            $initialIntent,
+            $tplAskUsername,
+            $tplAskProof,
+            $sessionContext,
+            $session,
+            $resumeMode,
+            $wasAwaiting
+        );
+        if ($usernameResult) {
+            return $usernameResult;
         }
 
         // ------------------------------------------------------------------
@@ -3382,281 +2049,26 @@ PROMPT;
         // before generic promotion/limits quick paths and before LLM.
         // ------------------------------------------------------------------
         try {
-            $sessionForDeposit = $session;
-            if (!$sessionForDeposit) {
-                $sessionForDeposit = $this->conversation->aiAgentSession()->first();
-                $sessionContext = is_array($sessionForDeposit?->context ?? null) ? $sessionForDeposit->context : [];
-            }
+            $depositFlowTemplates = [
+                'proofMissing' => $tplProofMissing,
+                'checking' => $tplChecking,
+                'doneResolved' => $tplDoneResolved,
+                'doneUnresolved' => $tplDoneUnresolved,
+            ];
 
-            $depositCheck = is_array($sessionContext['deposit_check'] ?? null)
-                ? $sessionContext['deposit_check']
-                : ['stage' => 'idle'];
-            $stage = is_string($depositCheck['stage'] ?? null) ? $depositCheck['stage'] : 'idle';
-
-            $confirmedUsername = isset($sessionContext['confirmed_username']) && is_string($sessionContext['confirmed_username']) && trim($sessionContext['confirmed_username']) !== ''
-                ? trim($sessionContext['confirmed_username'])
-                : null;
-
-            // Only treat the current turn as a deposit-check context if:
-            //  - routing hint says it's operational support,
-            //  - coarse LLM intent is "deposit",
-            //  - normalized text looks like a deposit *problem*, and
-            //  - we are actually in an active deposit_check flow (stage != idle)
-            //    OR we are explicitly seeing a deposit problem right now.
-            //
-            // NOTE: $initialIntent is ALWAYS '' because the caller passes
-            // intent=null. Using it as a condition here would permanently disable
-            // the first-turn deposit-flow entry for users that already have a
-            // confirmed username. We use the local looksLikeDepositProblem()
-            // heuristic instead so the engine is not entirely dependent on the
-            // OpenAI router returning coarseIntent=deposit consistently.
-            $isDepositProblemNow = (
-                (
-                    ($routeHint === 'operational' && $coarseIntent === 'deposit') ||
-                    $this->looksLikeDepositProblem($rawText)
-                ) &&
-                (
-                    $this->looksLikeDepositProblem($rawText) ||
-                    ($lastUserIdFlowType === 'deposit' && $stage !== 'idle')
-                )
+            $depositResult = $this->depositWithdrawManager->handleDepositCheckStateMachine(
+                $rawText,
+                $aiSettings,
+                $confirmedUsername,
+                $lastUserIdFlowType,
+                $awaitingUsername,
+                $sessionContext,
+                $session,
+                $depositFlowTemplates
             );
 
-            // Helper: persist any mutations to deposit_check back to session.
-            $saveDepositCheck = function (array $state) use (&$sessionContext, $sessionForDeposit) {
-                $sessionContext['deposit_check'] = $state;
-                if ($sessionForDeposit) {
-                    try {
-                        $sessionForDeposit->context = $sessionContext;
-                        $sessionForDeposit->save();
-                    } catch (\Throwable $_) {
-                        // best-effort only
-                    }
-                }
-            };
-
-            // If user explicitly cancels the deposit in the middle of an
-            // active deposit_check flow (any non-idle stage), treat it as a
-            // handoff case: send the wait/processing message and mark the
-            // flow as cancelled so human support can review.
-            $lowerRaw = mb_strtolower($rawText);
-            $hasCancelWord = (bool) preg_match('/\b(batal|batalkan|dibatalkan|batalin|dibatalin|cancel|ga jadi|gak jadi|nggak jadi|tidak jadi|tak jadi)\b/u', $lowerRaw);
-            $hasDepositWord = (bool) preg_match('/\b(deposit|depo|deponya|dp)\b/u', $lowerRaw);
-            // During an active deposit flow, users often say short follow-ups
-            // like "di batalin" without repeating the word "deposit".
-            $wantsCancelDeposit = $hasCancelWord && (
-                $hasDepositWord ||
-                $stage !== 'idle' ||
-                $lastUserIdFlowType === 'deposit' ||
-                $awaitingUsername
-            );
-
-            // If the user explicitly cancels the deposit in the middle of an
-            // active deposit_check flow (any non-idle stage), treat it as a
-            // handoff case: send the wait/processing message and mark the
-            // flow as cancelled so human support can review.
-            if ($stage !== 'idle' && $wantsCancelDeposit) {
-                $depositCheck['stage'] = 'cancelled';
-                $depositCheck['last_status'] = 'cancelled';
-                $saveDepositCheck($depositCheck);
-
-                try {
-                    $this->markDepositCheckResultOnUserMemory('cancelled');
-                } catch (\Throwable $_) { /* best-effort only */ }
-
-                $waitMessage = $this->resolveWaitMessage($aiSettings, $confirmedUsername);
-
-                return [
-                    'reply' => $waitMessage,
-                    'intent' => 'processing',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => true,
-                        'deposit_check' => [
-                            'stage' => $depositCheck['stage'],
-                            'status' => 'cancelled',
-                        ],
-                    ],
-                ];
-            }
-
-            // If the user says something like "cancel deposit" but no deposit
-            // check flow has started yet, we still want to escalate immediately
-            // rather than letting the LLM answer.  This mirrors the behaviour
-            // described in the DEPOSIT MISROUTE LOCK instructions above.
-            if ($stage === 'idle' && $wantsCancelDeposit) {
-                // mark a cancelled deposit_check for analytics even though we
-                // never actually started a full proof flow.
-                $depositCheck['stage'] = 'cancelled';
-                $depositCheck['last_status'] = 'cancelled';
-                $saveDepositCheck($depositCheck);
-
-                $waitMessage = $this->resolveWaitMessage($aiSettings, $confirmedUsername);
-
-                return [
-                    'reply' => $waitMessage,
-                    'intent' => 'processing',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => true,
-                        'deposit_check' => [
-                            'stage' => $depositCheck['stage'],
-                            'status' => 'cancelled',
-                        ],
-                    ],
-                ];
-            }
-
-            // If we are already waiting for deposit proof or gateway result,
-            // handle that first regardless of whether the current message
-            // still _looks_ like a deposit problem. Once the state machine has
-            // left idle it should own the conversation until it reaches done,
-            // otherwise arbitrary edits or prompt changes can drop us out and
-            // we fall back to the generic deposit template.
-            if (in_array($stage, ['awaiting_proof', 'awaiting_gateway_result'], true)) {
-                [$bankProof, $proofMessageId] = $this->getLatestBankProofForConversation();
-
-                if (!$bankProof) {
-                    // No proof yet: gently remind user to upload screenshot.
-                    $depositCheck['stage'] = 'awaiting_proof';
-                    $saveDepositCheck($depositCheck);
-
-                    return [
-                        'reply' => $tplProofMissing,
-                        'intent' => 'deposit',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                        ],
-                    ];
-                }
-
-                $bigman = is_array($bankProof['bigman'] ?? null) ? $bankProof['bigman'] : [];
-                $accepted = $bigman['accepted'] ?? null;
-                $bigmanAttempts = isset($bigman['attempts']) && is_numeric($bigman['attempts'])
-                    ? (int) $bigman['attempts']
-                    : 0;
-
-                if (is_bool($accepted)) {
-                    // Final status from gateway (BigMan).
-                    $status = $accepted ? 'resolved' : 'unresolved';
-                    $depositCheck['stage'] = 'done';
-                    $depositCheck['last_status'] = $status;
-                    $depositCheck['last_proof_message_id'] = $proofMessageId;
-                    $saveDepositCheck($depositCheck);
-
-                    // Also mark result in username CRM memory.
-                    try {
-                        $this->markDepositCheckResultOnUserMemory($status);
-                    } catch (\Throwable $_) {}
-
-                    if ($accepted) {
-                        $reply = $tplDoneResolved;
-                    } else {
-                        // After more than 3 failed checks, stop repeating bot
-                        // unresolved replies and transfer to human support.
-                        if ($bigmanAttempts > 3) {
-                            return [
-                                'reply' => 'Bos, sudah aku eskalasi ke tim support manusia untuk pengecekan manual ya. Mereka akan bantu lanjutkan verifikasi tiket kamu.',
-                                'intent' => 'processing',
-                                'context' => [
-                                    'awaitingUserId' => false,
-                                    'processing' => true,
-                                    'deposit_check' => [
-                                        'stage' => 'escalated_to_human',
-                                        'status' => 'unresolved_escalated',
-                                        'attempts' => $bigmanAttempts,
-                                    ],
-                                ],
-                            ];
-                        }
-
-                        $reply = $tplDoneUnresolved;
-                    }
-
-                    return [
-                        'reply' => $reply,
-                        'intent' => 'deposit',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                            'deposit_check' => [
-                                'stage' => $depositCheck['stage'],
-                                'status' => $status,
-                            ],
-                        ],
-                    ];
-                }
-
-                // No final accepted status yet, but we have proof with a
-                // pending gateway check.
-                if (!empty($bigman)) {
-                    $depositCheck['stage'] = 'awaiting_gateway_result';
-                    $depositCheck['last_proof_message_id'] = $proofMessageId;
-                    $saveDepositCheck($depositCheck);
-
-                    return [
-                        'reply' => $tplChecking,
-                        'intent' => 'deposit',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                            'deposit_check' => [
-                                'stage' => $depositCheck['stage'],
-                            ],
-                        ],
-                    ];
-                }
-
-                // Fallback: we saw some proof data but no clear gateway info.
-                $depositCheck['stage'] = 'done';
-                $depositCheck['last_status'] = 'unknown';
-                $depositCheck['last_proof_message_id'] = $proofMessageId;
-                $saveDepositCheck($depositCheck);
-
-                return [
-                    'reply' => 'Bukti deposit sudah aku terima ya bos. Lagi aku cek dulu, mohon ditunggu sebentar. 🙏',
-                    'intent' => 'deposit',
-                    'context' => [
-                        'awaitingUserId' => false,
-                        'processing' => false,
-                        'deposit_check' => [
-                            'stage' => $depositCheck['stage'],
-                            'status' => 'unknown',
-                        ],
-                    ],
-                ];
-            }
-
-            // If we're not already in a deposit_check flow, decide whether
-            // this message should start one (deposit problem only).
-            if ($stage === 'idle' && $isDepositProblemNow) {
-                if ($confirmedUsername === null) {
-                    // Username not confirmed yet: mark deposit_check as
-                    // waiting on username, but let the generic username
-                    // collection flow handle the actual prompts.
-                    $depositCheck['stage'] = 'awaiting_username';
-                    $saveDepositCheck($depositCheck);
-                    // fall through; early username handler above will have
-                    // already taken over when there is no confirmed username.
-                } else {
-                    // We already know the username, move directly to
-                    // requesting deposit proof.
-                    $depositCheck['stage'] = 'awaiting_proof';
-                    $depositCheck['last_status'] = null;
-                    $saveDepositCheck($depositCheck);
-
-                    return [
-                        'reply' => $tplAskProof,
-                        'intent' => 'deposit',
-                        'context' => [
-                            'awaitingUserId' => false,
-                            'processing' => false,
-                            'deposit_check' => [
-                                'stage' => 'awaiting_proof',
-                            ],
-                        ],
-                    ];
-                }
+            if ($depositResult) {
+                return $depositResult;
             }
         } catch (\Throwable $_) {
             // best-effort only; do not block normal flow
@@ -3703,7 +2115,7 @@ PROMPT;
                     foreach ($promotions as $p) {
                         $title = is_array($p) ? ($p['title'] ?? '') : (is_object($p) ? ($p->title ?? '') : '');
                         if (!is_string($title) || trim($title) === '') continue;
-                        $lines[] = '- ' . trim((string) $title);
+                        $lines[] = sprintf('%d. %s', count($lines) + 1, trim((string) $title));
                     }
                     if (!empty($lines)) {
                         try { Log::debug('ai-agent.promotionListSent', ['conversation_id' => $this->conversation->id ?? null, 'promotions' => $promotions]); } catch (\Throwable $_) { }
@@ -3719,49 +2131,9 @@ PROMPT;
 
         // Local quick-path: deposit/withdraw limits queries
         try {
-            $t = mb_strtolower($normalizedText);
-            $asksDeposit = (bool) preg_match('/\b(deposit|depo|deponya|top\s?up|topup|isi\s*saldo)\b/u', $t);
-            $asksWithdraw = (bool) preg_match('/\b(withdraw|wd|tarik|penarikan|withdrawal)\b/u', $t);
-            // Safer limit detection: avoid treating casual address "min" as "minimum".
-            $mentionsLimitWords = (bool) preg_match('/\b(minimal|minimum|max|maksimal|maximum|limit|batas)\b/u', $t);
-            $mentionsBareMin = (bool) preg_match('/\bmin\b/u', $t);
-            $asksHowMuch = (bool) preg_match('/\b(berapa)\b/u', $t);
-            // Consider "min" a limit cue only when it is closely tied to deposit/withdraw terms.
-            $minNearDepWd = (bool) preg_match('/\b(min\s*(depo|deponya|deposit|wd|withdraw|penarikan|tarik)|(depo|deponya|deposit|wd|withdraw|penarikan|tarik)\s*min)\b/u', $t);
-            // Detect "min" used as an address (admin) — usually appears at sentence start or end.
-            $addressingMin = (bool) preg_match('/(^|[\s,.;:!?])min[\s,.;:!?]*$/u', $t) || (bool) preg_match('/^(min)[\s,.;:!?]/u', $t);
-            $mentionsLimit = $mentionsLimitWords || ($mentionsBareMin && ($minNearDepWd || $asksHowMuch) && !$addressingMin);
-
-            if ($mentionsLimit && ($asksDeposit || $asksWithdraw)) {
-                $lines = [];
-                $dep = $aiSettings['depositLimits'] ?? null;
-                $wd = $aiSettings['withdrawLimits'] ?? null;
-                if (is_array($dep)) {
-                    $min = $dep['min'] ?? null; $max = $dep['max'] ?? null;
-                    if ($asksDeposit || (!$asksWithdraw && ($min !== null || $max !== null))) {
-                        if ($min !== null) $lines[] = 'Minimal deposit: ' . (string) $min;
-                        if ($max !== null) $lines[] = 'Maksimal deposit: ' . (string) $max;
-                    }
-                }
-                if (is_array($wd)) {
-                    $min = $wd['min'] ?? null; $max = $wd['max'] ?? null;
-                    if ($asksWithdraw || (!$asksDeposit && ($min !== null || $max !== null))) {
-                        if ($min !== null) $lines[] = 'Minimal withdraw: ' . (string) $min;
-                        if ($max !== null) $lines[] = 'Maksimal withdraw: ' . (string) $max;
-                    }
-                }
-
-                if (!empty($lines)) {
-                    $ctxLimits = [
-                        'deposit' => is_array($dep) ? ['min' => $dep['min'] ?? null, 'max' => $dep['max'] ?? null] : null,
-                        'withdraw' => is_array($wd) ? ['min' => $wd['min'] ?? null, 'max' => $wd['max'] ?? null] : null,
-                    ];
-                    return [
-                        'reply' => implode("\n", $lines),
-                        'intent' => $asksDeposit && !$asksWithdraw ? 'deposit' : ($asksWithdraw && !$asksDeposit ? 'withdraw' : 'promotion'),
-                        'context' => ['limits' => $ctxLimits],
-                    ];
-                }
+            $limitsReply = $this->depositWithdrawManager->tryHandleDepositWithdrawLimitsQuery($normalizedText, $aiSettings);
+            if ($limitsReply) {
+                return $limitsReply;
             }
         } catch (\Throwable $_) { /* ignore */ }
 
@@ -3824,39 +2196,11 @@ PROMPT;
             }
         }
 
-        $raw = $this->callOpenAiChatCompletion($messages, 0.2, 400);
-
-        $parsed = $this->tryParseJson($raw);
-        if (!is_array($parsed) || !array_key_exists('reply', $parsed) || !is_string($parsed['reply']) || trim($parsed['reply']) === '') {
-            $rawTrim = trim($this->stripMarkdownCodeFences((string) $raw));
-
-            // If the model returned a JSON envelope (often wrapped in ```json),
-            // do NOT echo it back to the user. Instead, fall back to a safe message.
-            if ($rawTrim !== '') {
-                if ($this->looksLikeJsonEnvelope($rawTrim)) {
-                    $parsed = [
-                        'reply' => 'Maaf ya, aku lagi cek dulu. Boleh tunggu sebentar? 🙏',
-                        'intent' => $intent ?: 'general',
-                    ];
-                } else {
-                    $parsed = ['reply' => $rawTrim];
-                }
-            } else {
-                // retry once like Chat Buddy
-                $retry = $this->callOpenAiChatCompletion($messages, 0.3, 4000);
-                $retryTrim = trim($this->stripMarkdownCodeFences((string) $retry));
-                if ($retryTrim !== '') {
-                    if ($this->looksLikeJsonEnvelope($retryTrim)) {
-                        $parsed = [
-                            'reply' => 'Maaf ya, aku lagi cek dulu. Boleh tunggu sebentar? 🙏',
-                            'intent' => $intent ?: 'general',
-                        ];
-                    } else {
-                        $parsed = ['reply' => $retryTrim];
-                    }
-                }
-            }
-        }
+        $parsed = $this->routingManager->parseAssistantReply(
+            $messages,
+            $intent,
+            $this->activityLogContext(),
+        );
 
         if (!is_array($parsed) || !isset($parsed['reply'])) {
             return [
@@ -4235,83 +2579,9 @@ PROMPT;
         return implode("\n", $lines);
     }
 
-    private function tryParseJson(string $raw): ?array
-    {
-        $trimmed = trim($this->stripMarkdownCodeFences($raw));
-        if ($trimmed === '') return null;
-
-        try {
-            $decoded = json_decode($trimmed, true);
-            if (is_array($decoded)) return $decoded;
-        } catch (\Throwable $e) {
-            // ignore
-        }
-
-        // If there is extra text around the JSON (including trailing ```),
-        // extract the innermost JSON object/array substring.
-        $objStart = strpos($trimmed, '{');
-        $objEnd = strrpos($trimmed, '}');
-        if ($objStart !== false && $objEnd !== false && $objEnd > $objStart) {
-            $candidate = substr($trimmed, $objStart, $objEnd - $objStart + 1);
-            $candidate = trim($candidate);
-            try {
-                $decoded = json_decode($candidate, true);
-                if (is_array($decoded)) return $decoded;
-            } catch (\Throwable $e) {
-                // ignore
-            }
-        }
-
-        $arrStart = strpos($trimmed, '[');
-        $arrEnd = strrpos($trimmed, ']');
-        if ($arrStart !== false && $arrEnd !== false && $arrEnd > $arrStart) {
-            $candidate = substr($trimmed, $arrStart, $arrEnd - $arrStart + 1);
-            $candidate = trim($candidate);
-            try {
-                $decoded = json_decode($candidate, true);
-                if (is_array($decoded)) return $decoded;
-            } catch (\Throwable $e) {
-                // ignore
-            }
-        }
-
-        if (preg_match('/\{[\s\S]*\}$/', $trimmed, $m)) {
-            try {
-                $decoded = json_decode($m[0], true);
-                if (is_array($decoded)) return $decoded;
-            } catch (\Throwable $e) {
-                // ignore
-            }
-        }
-
-        return null;
-    }
-
     private function stripMarkdownCodeFences(string $text): string
     {
-        $t = trim($text);
-        if ($t === '') return '';
-
-        if (preg_match('/^```(?:json)?\s*([\s\S]*?)\s*```$/i', $t, $m)) {
-            return trim((string) ($m[1] ?? ''));
-        }
-
-        return $text;
-    }
-
-    private function looksLikeJsonEnvelope(string $text): bool
-    {
-        $t = trim($text);
-        if ($t === '') return false;
-
-        // Strong indicator: JSON schema keys present together.
-        $hasReply = (bool) preg_match('/"reply"\s*:/', $t);
-        $hasIntentOrContext = (bool) preg_match('/"intent"\s*:|"context"\s*:/', $t);
-
-        // If it starts like JSON (or was code-fenced before stripping), treat it as envelope.
-        $startsLikeJson = str_starts_with($t, '{') || str_starts_with($t, '[');
-
-        return $startsLikeJson && $hasReply && $hasIntentOrContext;
+        return $this->parser->stripMarkdownCodeFences($text);
     }
 
     /**
@@ -4330,128 +2600,96 @@ PROMPT;
      *   'confidence' => float,     // 0-1
      * ]
      */
-    private function normalizeUserInputForRouting(string $text): array
+    protected function normalizeUserInputForRouting(string $text): array
     {
-        $raw = trim($text);
-        if ($raw === '') {
-            return [
-                'normalized_text' => $text,
-                'coarse_intent' => 'other',
-                'route' => 'general',
-                'confidence' => 0.0,
-            ];
-        }
-
-        $apiKey = config('services.openai.api_key') ?? env('OPENAI_API_KEY');
-        if (!$apiKey) {
-            return [
-                'normalized_text' => $text,
-                'coarse_intent' => 'other',
-                'route' => 'general',
-                'confidence' => 0.0,
-            ];
-        }
-
-        $system = 'You normalize short chat messages in Bahasa Indonesia for a casino customer support assistant. '
-            . 'Always output small JSON ONLY with keys: "normalized_text" (string), "coarse_intent" '
-            . '(one of: deposit, withdraw, turnover, promo, promo_claim, password_reset, qris, games, rtp, smalltalk, anger, unclear, other), '
-            . '"route" ("operational" or "general"), and "confidence" (number 0-1). '
-            . 'Do not include explanations, markdown, or extra keys. '
-            . 'Messages about lupa akun, lupa password, tidak bisa login, atau minta bantuan akses akun '
-            . '(for example: "Tlong bntu lupa akun") MUST use coarse_intent = "password_reset" and route = "operational". '
-            . 'Messages indicating a mistaken or cancelled deposit (for example: "tolong batalkan deposit", "cancel deposit", "batal deposito") MUST use coarse_intent = "deposit" and route = "operational".';
-
-        $user = "Pesan user: \"{$raw}\"\n\n"
-            . '1) Tulis ulang pesan tersebut menjadi kalimat yang jelas dan natural dalam Bahasa Indonesia, tanpa mengubah maksud utama. '
-            . '2) Tentukan coarse_intent berdasarkan maksud utama (misalnya deposit, withdraw, turnover, promo, promo_claim, password_reset, qris, games, rtp, smalltalk, anger, unclear, other). '
-            . '3) route = "operational" HANYA jika user jelas minta cek / proses akun (deposit/withdraw/turnover/password_reset/qris/promo_claim). '
-            . 'Kalau masih ngobrol biasa / belum jelas masalahnya, set route = "general". '
-            . '4) confidence = seberapa yakin kamu, antara 0 dan 1.';
-
-        try {
-            $messages = [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => $user],
-            ];
-
-            $rawResp = $this->callOpenAiChatCompletion($messages, 0.1, 200);
-            $parsed = $this->tryParseJson((string) $rawResp);
-            if (!is_array($parsed)) {
-                return [
-                    'normalized_text' => $text,
-                    'coarse_intent' => 'other',
-                    'route' => 'general',
-                    'confidence' => 0.0,
-                ];
-            }
-
-            $normalized = isset($parsed['normalized_text']) && is_string($parsed['normalized_text']) && trim($parsed['normalized_text']) !== ''
-                ? trim((string) $parsed['normalized_text'])
-                : $text;
-
-            $coarse = isset($parsed['coarse_intent']) && is_string($parsed['coarse_intent']) && trim($parsed['coarse_intent']) !== ''
-                ? trim(mb_strtolower((string) $parsed['coarse_intent']))
-                : 'other';
-
-            $route = isset($parsed['route']) && is_string($parsed['route']) && in_array($parsed['route'], ['operational','general'], true)
-                ? $parsed['route']
-                : 'general';
-
-            $conf = isset($parsed['confidence']) && is_numeric($parsed['confidence'])
-                ? max(0.0, min(1.0, (float) $parsed['confidence']))
-                : 0.0;
-
-            return [
-                'normalized_text' => $normalized,
-                'coarse_intent' => $coarse,
-                'route' => $route,
-                'confidence' => $conf,
-            ];
-        } catch (\Throwable $_) {
-            return [
-                'normalized_text' => $text,
-                'coarse_intent' => 'other',
-                'route' => 'general',
-                'confidence' => 0.0,
-            ];
-        }
+        return $this->routingManager->normalizeUserInputForRouting(
+            $text,
+            $this->activityLogContext(),
+        );
     }
 
     private function callOpenAiChatCompletion(array $messages, float $temperature, int $maxTokens): string
     {
-        $apiKey = config('services.openai.api_key') ?? env('OPENAI_API_KEY');
-        $model = config('services.openai.text_model')
-            ?? env('OPENAI_TEXT_MODEL')
-            ?? env('OPENAI_MODEL')
-            ?? 'gpt-3.5-turbo';
+        return $this->aiClient->callOpenAiChatCompletion(
+            $messages,
+            $temperature,
+            $maxTokens,
+            $this->activityLogContext(),
+        );
+    }
 
-        if (!$apiKey) {
-            Log::warning('OpenAI is not configured (missing OPENAI_API_KEY).');
-            return '';
+    private function activityLogContext(): array
+    {
+        $groupId = $this->conversation->group_id
+            ? (int) $this->conversation->group_id
+            : null;
+        $agent = $this->resolveAiAgentRecordForActivity($groupId);
+
+        return [
+            'conversation_id' => $this->conversation->id,
+            'group_id' => $groupId,
+            'ai_agent_id' => $agent?->id,
+            'agent_name' => $agent?->name ?? $this->resolveAssistantNameForActivity(),
+        ];
+    }
+
+    private function resolveAiAgentRecordForActivity(?int $groupId): ?AiAgentRecord
+    {
+        $query = AiAgentRecord::query()->where('enabled', true);
+
+        if ($groupId) {
+            $groupAgent = (clone $query)
+                ->where('group_id', $groupId)
+                ->orderBy('id')
+                ->first();
+
+            if ($groupAgent) {
+                return $groupAgent;
+            }
+        }
+
+        return $query
+            ->whereNull('group_id')
+            ->orderBy('id')
+            ->first();
+    }
+
+    private function resolveAssistantNameForActivity(): string
+    {
+        $groupId = $this->conversation->group_id
+            ? (int) $this->conversation->group_id
+            : null;
+        $overrides = [];
+
+        if ($groupId) {
+            try {
+                $record = GroupAiAgentSettings::query()
+                    ->where('group_id', $groupId)
+                    ->first();
+                $overrides = $record?->overrides ?? [];
+            } catch (\Throwable $_) {
+                $overrides = [];
+            }
+        }
+
+        if (!is_array($overrides)) {
+            $overrides = [];
         }
 
         try {
-            $client = new Client(['timeout' => 30]);
-            $resp = $client->post('https://api.openai.com/v1/chat/completions', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'model' => $model,
-                    'messages' => $messages,
-                    'temperature' => $temperature,
-                    'max_tokens' => $maxTokens,
-                ],
-            ]);
-
-            $body = json_decode((string) $resp->getBody(), true);
-            $text = $body['choices'][0]['message']['content'] ?? null;
-            return is_string($text) ? trim($text) : '';
-        } catch (\Throwable $e) {
-            Log::error('OpenAI call failed: ' . $e->getMessage());
-            return '';
+            $global = settings('aiAgent') ?? [];
+        } catch (\Throwable $_) {
+            $global = [];
         }
+
+        if (!is_array($global)) {
+            $global = [];
+        }
+
+        $name = Arr::get($overrides, 'name', Arr::get($global, 'name', 'AI assistant'));
+        $name = is_string($name) ? trim($name) : '';
+
+        return $name !== '' ? $name : 'AI assistant';
     }
 
     /**
@@ -4535,87 +2773,6 @@ PROMPT;
      */
     private function rewriteSoftSellUsingLlm(string $original, array $aiSettings = [], string $userText = ''): ?string
     {
-        $orig = trim($original);
-        if ($orig === '') return null;
-
-        $brand = (string) ($aiSettings['brandName'] ?? 'the brand');
-        $contextSnippet = trim((string) $userText);
-
-        // Local safe templates (guaranteed non-pressuring). Used if LLM is unavailable or fails validation.
-        $localTemplates = [
-            "Hai! Kalau mau tanya tentang promo atau cara deposit, bilang aja ya — aku bantu santai kok. 🙌",
-            "Hei, kalau butuh info promo atau cara deposit nanti aja bilang ya — aku bantu tanpa tekan.",
-            "Kalau mau lihat promo atau cara deposit, tinggal bilang kapan pun — santai aja, aku bantu.",
-            "Gak masalah kalau nggak mau bahas promo. Kalau butuh info, bilang aja ya — aku bantu santai.",
-        ];
-
-        // If OpenAI not configured, skip LLM attempt and use local template.
-        $apiKey = config('services.openai.api_key') ?? env('OPENAI_API_KEY');
-        if (!$apiKey) {
-            try { Log::info('Soft-sell rewrite skipped: OpenAI API key not configured', ['conversation_id' => $this->conversation->id ?? null]); } catch (\Throwable $e) { }
-            return $localTemplates[array_rand($localTemplates)];
-        }
-
-        // Build base system/user prompts for LLM rewrite attempts
-        $baseSystem = "You are a helpful assistant that rewrites messages into a friendly, non-pressuring 'soft-sell' tone in Bahasa Indonesia. You MAY include ONE short non-pressuring sentence that explains how to deposit or offers step-by-step help. Always include a responsible gambling reminder and avoid pushy wording. " .
-                      "Do NOT include any calls-to-action that encourage deposits, signups, clicking links, or spending. Never say you are a virtual assistant or a bot, always present yourself as a friendly human support agent." .
-                      "Keep reply short (1-2 sentences), empathetic, and offer to provide more info only if the user asks. Never invent promo details or links.";
-
-        $baseUser = "Rewrite the following reply into a short, friendly, non-pressuring reply in Bahasa Indonesia. " .
-                    "Do NOT add any CTA or promotional pressure. Keep it conversational and suitable for a support chat.\n\nOriginal reply:\n" . $orig;
-        if ($contextSnippet !== '') {
-            $baseUser .= "\n\nAdditional context (user message): " . $contextSnippet;
-        }
-
-        $attempts = [
-            ['temp' => 0.7, 'max' => 200, 'prompt' => $baseUser],
-            // Stricter retry if first attempt contains CTAs
-            ['temp' => 0.3, 'max' => 180, 'prompt' => "Rewrite the text to remove ANY language that can be perceived as a call-to-action or promotional push. Keep it neutral and friendly. Original reply:\n" . $orig],
-        ];
-
-        $ctaRegex = '/\b(bayar|deposit|isi\s*saldo|daftar|gabung|klik|segera|langsung|topup|top\s?up|beli|tarik\s*uang)\b/ui';
-
-        foreach ($attempts as $i => $attempt) {
-            try {
-                $messages = [
-                    ['role' => 'system', 'content' => $baseSystem],
-                    ['role' => 'user', 'content' => $attempt['prompt']],
-                ];
-                $resp = $this->callOpenAiChatCompletion($messages, $attempt['temp'], $attempt['max']);
-                $rewritten = trim($this->stripMarkdownCodeFences((string) $resp));
-
-                if ($rewritten === '') {
-                    try { Log::info('Soft-sell rewrite attempt empty', ['attempt' => $i, 'conversation_id' => $this->conversation->id ?? null]); } catch (\Throwable $e) { }
-                    continue; // try next attempt or fallback
-                }
-
-                // Validate rewritten text does not contain CTA keywords
-                if (preg_match($ctaRegex, mb_strtolower($rewritten))) {
-                    try { Log::info('Soft-sell rewrite contained CTA, rejecting', ['attempt' => $i, 'text' => mb_substr($rewritten,0,200), 'conversation_id' => $this->conversation->id ?? null]); } catch (\Throwable $e) { }
-                    continue; // try next attempt or fallback
-                }
-
-                // Good rewrite
-                try { Log::info('Soft-sell rewrite succeeded', ['attempt' => $i, 'conversation_id' => $this->conversation->id ?? null]); } catch (\Throwable $e) { }
-                return $rewritten;
-            } catch (\Throwable $e) {
-                try { Log::warning('Soft-sell rewrite attempt failed', ['attempt' => $i, 'error' => $e->getMessage()]); } catch (\Throwable $ignored) { }
-                continue;
-            }
-        }
-
-        // Last-resort local template that can be slightly tailored based on user context
-        $tailored = $localTemplates[array_rand($localTemplates)];
-        if ($contextSnippet !== '') {
-            // If user asked about games or RTP, reflect that without promoting deposits
-            if (preg_match('/\b(promo|promosi|bonus)\b/ui', $contextSnippet)) {
-                $tailored = "Ada beberapa promo aktif. Kalau mau lihat detailnya, bilang aja ya — aku bantu santai. 🙌";
-            } elseif (preg_match('/\b(deposit|depo|topup|top up)\b/ui', $contextSnippet)) {
-                $tailored = "Kalau mau tahu cara deposit, bilang aja kapan pun — aku bantu langkah demi langkah tanpa tekanan.";
-            }
-        }
-
-        try { Log::info('Soft-sell rewrite falling back to local template', ['conversation_id' => $this->conversation->id ?? null]); } catch (\Throwable $e) { }
-        return $tailored;
+        return $this->softSellManager->rewriteSoftSellUsingLlm($original, $aiSettings, $userText);
     }
 }

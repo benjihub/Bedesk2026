@@ -5,6 +5,7 @@ namespace Ai\Controllers;
 use Ai\AiAgent\Models\AiAgent;
 use Ai\AiAgent\Models\AiAgentActivityLog;
 use Common\Core\BaseController;
+use App\Conversations\Models\Conversation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -15,7 +16,7 @@ class AiAgentStatusController extends BaseController
         $this->authorize('ai_agent.update');
 
         $groupId = $this->resolveGroupId($request);
-        $agents = $this->scopedAgents($groupId)->get()->unique('name')->values();
+        $agents = $this->scopedAgents($groupId)->get()->values();
         $logs = $this->scopedLogs($groupId)->get();
 
         $agentStats = $agents->map(function (AiAgent $agent) use ($logs, $groupId) {
@@ -35,6 +36,7 @@ class AiAgentStatusController extends BaseController
                 'transfer_instruction' => $agent->transfer_instruction,
                 'cant_assist_instruction' => $agent->cant_assist_instruction,
                 'status' => $stats['status'],
+                'status_detail' => $stats['status_detail'],
                 'total_requests' => $stats['total_requests'],
                 'successful_responses' => $stats['successful_responses'],
                 'response_time_ms' => $stats['response_time_ms'],
@@ -63,31 +65,26 @@ class AiAgentStatusController extends BaseController
 
     protected function scopedAgents(?int $groupId)
     {
-        return AiAgent::query()->where(function ($query) use ($groupId) {
-            if ($groupId) {
-                $query->whereNull('group_id')->orWhere('group_id', $groupId);
-                return;
-            }
+        if ($groupId) {
+            return AiAgent::query()
+                ->whereNull('group_id')
+                ->orWhere('group_id', $groupId)
+                ->orderByRaw('CASE WHEN group_id = ? THEN 0 ELSE 1 END', [$groupId]);
+        }
 
-            $query->whereNull('group_id');
-        })->orderByRaw(
-            $groupId
-                ? 'CASE WHEN group_id = ? THEN 0 ELSE 1 END'
-                : 'id DESC',
-            $groupId ? [$groupId] : [],
-        );
+        return AiAgent::query()->orderByDesc('id');
     }
 
     protected function scopedLogs(?int $groupId)
     {
-        return AiAgentActivityLog::query()->where(function ($query) use ($groupId) {
-            if ($groupId) {
-                $query->whereNull('group_id')->orWhere('group_id', $groupId);
-                return;
-            }
+        if ($groupId) {
+            return AiAgentActivityLog::query()
+                ->whereNull('group_id')
+                ->orWhere('group_id', $groupId)
+                ->orderByDesc('created_at');
+        }
 
-            $query->whereNull('group_id');
-        })->orderByDesc('created_at');
+        return AiAgentActivityLog::query()->orderByDesc('created_at');
     }
 
     protected function metricsForAgent(AiAgent $agent, Collection $logs, ?int $groupId): array
@@ -97,11 +94,15 @@ class AiAgentStatusController extends BaseController
                 return true;
             }
 
-            if (!$agent->group_id && !$groupId) {
-                return $log->agent_name === $agent->name;
+            if ($log->ai_agent_id || $log->agent_name !== $agent->name) {
+                return false;
             }
 
-            return !$log->ai_agent_id && $log->agent_name === $agent->name;
+            if ($agent->group_id !== null) {
+                return (int) ($log->group_id ?? 0) === (int) $agent->group_id;
+            }
+
+            return $log->group_id === null;
         })->values();
 
         $totalRequests = $agentLogs->count();
@@ -114,15 +115,31 @@ class AiAgentStatusController extends BaseController
         $lastActivityAt = optional($agentLogs->first()?->created_at)->toISOString()
             ?? $agent->updated_at?->toISOString();
         $latestLog = $agentLogs->first();
+        $hasLogs = $agentLogs->isNotEmpty();
+        $activeWidget = $this->hasActiveWidgetConversation($agent, $groupId);
         $status = !$agent->enabled
             ? 'disconnected'
-            : (($latestLog?->status ?? null) === 'error' ? 'error' : 'connected');
+            : ($activeWidget
+                ? 'connected'
+                : (($latestLog?->status ?? null) === 'error'
+                    ? 'error'
+                    : 'disconnected'));
         $uptimePercent = $totalRequests > 0
             ? round(($successfulResponses / $totalRequests) * 100, 1)
             : null;
+        $statusDetail = !$agent->enabled
+            ? 'Agent is paused'
+            : ($activeWidget
+                ? 'Active widget is serving'
+                : (($latestLog?->status ?? null) === 'error'
+                    ? 'Latest run failed'
+                    : ($hasLogs
+                        ? 'No active widget conversation'
+                        : 'No activity yet')));
 
         return [
             'status' => $status,
+            'status_detail' => $statusDetail,
             'total_requests' => $totalRequests,
             'successful_responses' => $successfulResponses,
             'response_time_ms' => $averageResponseTime,
@@ -131,6 +148,29 @@ class AiAgentStatusController extends BaseController
             'last_activity_at' => $lastActivityAt,
             'error_message' => $latestLog?->error_message,
         ];
+    }
+
+    protected function hasActiveWidgetConversation(AiAgent $agent, ?int $groupId): bool
+    {
+        $query = Conversation::query()
+            ->where('channel', 'widget')
+            ->whereNotClosed()
+            ->where(function ($builder) {
+                $builder->where('assigned_to', Conversation::ASSIGNED_BOT)
+                    ->orWhere('ai_agent_involved', true);
+            });
+
+        if ($agent->group_id !== null) {
+            $query->where('group_id', $agent->group_id);
+        } elseif ($groupId !== null) {
+            $query->where(function ($builder) use ($groupId) {
+                $builder->whereNull('group_id')->orWhere('group_id', $groupId);
+            });
+        } else {
+            $query->whereNull('group_id');
+        }
+
+        return $query->exists();
     }
 
     protected function summarize(Collection $agents, Collection $logs): array
@@ -159,4 +199,5 @@ class AiAgentStatusController extends BaseController
             'log_count' => $logs->count(),
         ];
     }
+
 }

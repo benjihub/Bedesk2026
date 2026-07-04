@@ -1,2 +1,0 @@
-import{m as t}from"./client-j9nNowi7.js";const e={"=":t("is"),"!=":t("is not"),">":t("is greater than"),">=":t("is greater than or equal to"),"<":t("is less than"),"<=":t("is less than or equal to"),notNull:t("is not empty"),contains:t("contains"),notContains:t("does not contain"),startsWith:t("starts with"),endsWith:t("ends with"),has:t("Include"),doesntHave:t("Do not include"),between:t("Is between"),hasAll:t("Include all")};export{e as F};
-//# sourceMappingURL=filter-operator-names-lAUihY-D.js.map

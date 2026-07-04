@@ -10,10 +10,15 @@ import {DialogBody} from '@ui/overlays/dialog/dialog-body';
 import {useDialogContext} from '@ui/overlays/dialog/dialog-context';
 import {DialogFooter} from '@ui/overlays/dialog/dialog-footer';
 import {DialogHeader} from '@ui/overlays/dialog/dialog-header';
+import {useSearchParams} from 'react-router';
+import {AiAgentGroupSelectField} from './ai-agent-group-select';
 import {useCreateAiAgent} from './use-create-ai-agent';
+import {AiAgentAvatarField} from './ai-agent-avatar-field';
 
 interface FormData {
+  groupId: string;
   name: string;
+  image?: string;
   enabled: boolean;
   personality: string;
   greeting_type: string;
@@ -22,9 +27,12 @@ interface FormData {
 
 export function CreateAiAgentForm() {
   const {formId, close} = useDialogContext();
+  const [searchParams] = useSearchParams();
   const form = useForm<FormData>({
     defaultValues: {
+      groupId: searchParams.get('groupId') ?? '',
       name: '',
+      image: '',
       enabled: true,
       personality: 'friendly',
       greeting_type: 'basicGreeting',
@@ -50,12 +58,14 @@ export function CreateAiAgentForm() {
           }
           className="space-y-16"
         >
+          <AiAgentGroupSelectField />
           <FormTextField
             name="name"
             label={<Trans message="Agent name" />}
             autoFocus
             required
           />
+          <AiAgentAvatarField form={form} />
           <FormSwitch name="enabled">
             <Trans message="Enabled" />
           </FormSwitch>

@@ -1,0 +1,2 @@
+import{H as a,j as e,t as s,x as g,c as r,p as t,s as i,b as p,r as n,a as u,d as h,e as L}from"./core-Bc_YVYRS.js";import"./client-Oxz8h_2h.js";a.registerLanguage("javascript",e);a.registerLanguage("typescript",s);a.registerLanguage("html",g);a.registerLanguage("css",r);a.registerLanguage("php",t);a.registerLanguage("shell",i);a.registerLanguage("bash",p);a.registerLanguage("ruby",n);a.registerLanguage("python",u);a.registerLanguage("java",h);a.registerLanguage("c",L);export{a as hljs};
+//# sourceMappingURL=highlight-D8yKMnBR.js.map

@@ -226,7 +226,7 @@ interface ScreenHeaderProps {
 function ScreenHeader({conversation}: ScreenHeaderProps) {
   const logoSrc = useWidgetLogoSrc();
   const {branding, aiAgent} = useSettings();
-  const {newChatGreeting} = useWidgetBootstrapData();
+  const {newChatGreeting, aiAgent: widgetAiAgent} = useWidgetBootstrapData();
 
   let avatar = logoSrc ? (
     <Avatar src={logoSrc} circle={false} size="w-30 h-30" />
@@ -246,8 +246,15 @@ function ScreenHeader({conversation}: ScreenHeaderProps) {
     conversation?.assigned_to === 'bot' ||
     newChatGreeting?.parts[0]?.author === 'bot'
   ) {
-    avatar = <AiAgentAvatar size="w-30 h-30" showOnlineIndicator />;
-    label = aiAgent?.name || 'AI Agent';
+    const activeAiAgent = conversation?.ai_agent ?? widgetAiAgent ?? null;
+    avatar = (
+      <AiAgentAvatar
+        size="w-30 h-30"
+        showOnlineIndicator
+        aiAgent={activeAiAgent}
+      />
+    );
+    label = activeAiAgent?.name || aiAgent?.name || 'AI Agent';
   }
 
   return (

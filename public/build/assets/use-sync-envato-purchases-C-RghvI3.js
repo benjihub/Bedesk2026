@@ -1,0 +1,2 @@
+import{i as a,s as t,k as r,q as n,l as o,t as u,m as i}from"./client-Oxz8h_2h.js";function p(){return a({mutationFn:s=>r.post(`users/${s.userId}/envato/sync-purchases`,s).then(e=>e.data),onSuccess:async()=>{await n.invalidateQueries({queryKey:o.envato.invalidateKey}),u(i("Imported purchases from envato"))},onError:s=>t(s)})}export{p as u};
+//# sourceMappingURL=use-sync-envato-purchases-C-RghvI3.js.map

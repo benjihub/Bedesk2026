@@ -13,6 +13,7 @@ import {WidgetChatFeedMessage} from '@livechat/widget/conversation-screen/feed/w
 import {FormattedDate} from '@ui/i18n/formatted-date';
 import {Trans} from '@ui/i18n/trans';
 import {HelpOutlineIcon} from '@ui/icons/material/HelpOutline';
+import {useWidgetBootstrapData} from '@livechat/widget/hooks/use-widget-bootstrap-data';
 
 interface Props {
   message: ConversationContentItem;
@@ -24,6 +25,10 @@ export function WidgetChatFeedContentItem({
   isLastInGroup = true,
   isLast = true,
 }: Props) {
+  const {activeConversationData, aiAgent} = useWidgetBootstrapData();
+  const widgetAiAgent =
+    activeConversationData?.conversation.ai_agent ?? aiAgent ?? null;
+
   if (message.type === 'event') {
     return <EventItem event={message} />;
   }
@@ -44,7 +49,9 @@ export function WidgetChatFeedContentItem({
     return (
       <TypingIndicator
         message={message}
-        avatar={<MessageAvatar message={message} size="sm" />}
+        avatar={
+          <MessageAvatar message={message} size="sm" aiAgent={widgetAiAgent} />
+        }
       />
     );
   }
@@ -57,7 +64,7 @@ export function WidgetChatFeedContentItem({
         isLast={isLast}
         avatar={
           message.author !== 'user' ? (
-            <MessageAvatar message={message} size="sm" />
+            <MessageAvatar message={message} size="sm" aiAgent={widgetAiAgent} />
           ) : undefined
         }
         message={message}

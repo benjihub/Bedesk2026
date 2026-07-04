@@ -10,6 +10,7 @@ use Ai\Controllers\AiAgentWebpagesController;
 use Ai\Controllers\AiAgentFlowsController;
 use Ai\Controllers\AiAgentToolsController;
 use Ai\Controllers\AiAgentsController;
+use Ai\Controllers\AiAgentPreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'v1'], function () {
@@ -74,5 +75,8 @@ Route::group(['prefix' => 'v1'], function () {
         Route::post('lc/ai-agent/agents', [AiAgentsController::class, 'store']);
         Route::put('lc/ai-agent/agents/{agent}', [AiAgentsController::class, 'update']);
         Route::delete('lc/ai-agent/agents/{ids}', [AiAgentsController::class, 'destroy']);
+
+        // Preview
+        Route::delete('lc/ai-agent-preview/conversations/{conversation}', [AiAgentPreviewController::class, 'destroyConversation']);
     });
 });

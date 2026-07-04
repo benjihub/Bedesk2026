@@ -7,12 +7,21 @@ interface Props {
   size?: AvatarProps['size'];
   className?: string;
   showOnlineIndicator?: boolean;
+  aiAgent?: {
+    name?: string | null;
+    image?: string | null;
+  } | null;
 }
-export function AiAgentAvatar({className, size, showOnlineIndicator}: Props) {
+export function AiAgentAvatar({
+  className,
+  size,
+  showOnlineIndicator,
+  aiAgent: aiAgentOverride,
+}: Props) {
   const {aiAgent} = useSettings();
   const logoSrc = useWidgetLogoSrc();
-  const label = aiAgent?.name || 'AI assistant';
-  const image = aiAgent?.image || logoSrc;
+  const label = aiAgentOverride?.name || aiAgent?.name || 'AI assistant';
+  const image = aiAgentOverride?.image || aiAgent?.image || logoSrc;
 
   const avatar = (
     <Avatar

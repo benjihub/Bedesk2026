@@ -14,26 +14,53 @@ import { CreateAiAgentForm } from './create-ai-agent-form';
 import { ColumnConfig } from '@common/datatable/column-config';
 import { AiAgent as AiAgentType } from './use-ai-agents';
 import { AiAgent } from './ai-agent';
-
-const columns: ColumnConfig<AiAgentType>[] = [
-  {
-    key: 'name',
-    header: () => <Trans message="Name" />,
-    body: (agent) => agent.name,
-  },
-  {
-    key: 'enabled',
-    header: () => <Trans message="Enabled" />,
-    body: (agent) => agent.enabled ? 'Yes' : 'No',
-  },
-  {
-    key: 'actions',
-    header: () => <Trans message="Actions" />,
-    body: (agent) => <AiAgent agent={agent} />,
-  },
-];
+import {helpdeskQueries} from '@app/dashboard/helpdesk-queries';
+import {useQuery} from '@tanstack/react-query';
+import {useSearchParams} from 'react-router';
+import {Avatar} from '@ui/avatar/avatar';
 
 export function AiAgentsPage() {
+  const [searchParams] = useSearchParams();
+  const activeGroupId = searchParams.get('groupId');
+  const groupsQuery = useQuery(helpdeskQueries.groups.normalizedList);
+  const groupsById = new Map(
+    (groupsQuery.data?.groups ?? []).map(group => [String(group.id), group.name]),
+  );
+
+  const columns: ColumnConfig<AiAgentType>[] = [
+    {
+      key: 'name',
+      header: () => <Trans message="Name" />,
+      body: agent => (
+        <div className="flex items-center gap-10">
+          <Avatar src={agent.image} label={agent.name} size="sm" />
+          <span>{agent.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'group_id',
+      header: () => <Trans message="Group" />,
+      body: agent => {
+        if (agent.group_id == null) {
+          return <Trans message="Global" />;
+        }
+
+        return groupsById.get(String(agent.group_id)) ?? `Group #${agent.group_id}`;
+      },
+    },
+    {
+      key: 'enabled',
+      header: () => <Trans message="Enabled" />,
+      body: agent => (agent.enabled ? 'Yes' : 'No'),
+    },
+    {
+      key: 'actions',
+      header: () => <Trans message="Actions" />,
+      body: agent => <AiAgent agent={agent} />,
+    },
+  ];
+
   return (
     <DatatablePageWithHeaderLayout className="dashboard-grid-content dashboard-rounded-panel">
       <AiAgentPageHeader />
@@ -41,6 +68,7 @@ export function AiAgentsPage() {
         <DatatablePageScrollContainer>
           <DataTable
             endpoint="lc/ai-agent/agents"
+            queryParams={{groupId: activeGroupId || undefined}}
             columns={columns}
             emptyStateMessage={
               <DataTableEmptyStateMessage

@@ -2,6 +2,7 @@
 
 namespace Livechat\Widget;
 
+use Ai\AiAgent\Models\AiAgent;
 use App\Attributes\Models\CustomAttribute;
 use App\Conversations\Actions\PaginateConversationItems;
 use App\Conversations\Models\Conversation;
@@ -112,6 +113,7 @@ class WidgetConversationLoader
     public function loadDataFor(Conversation $conversation): array
     {
         $pagination = (new PaginateConversationItems())->execute($conversation);
+        $aiAgent = $this->resolveAiAgentForGroup($conversation->group_id);
 
         $hasPostChatForm = collect($pagination['data'])->first(
             fn($msg) => $msg['type'] === 'submittedFormData' &&
@@ -161,6 +163,13 @@ class WidgetConversationLoader
                         'image' => $conversation->assignee->image,
                     ]
                     : null,
+                'ai_agent' => $aiAgent
+                    ? [
+                        'id' => $aiAgent->id,
+                        'name' => $aiAgent->name,
+                        'image' => $aiAgent->image,
+                    ]
+                    : null,
             ],
             'items' => $pagination,
             'hasPostChatForm' => $hasPostChatForm,
@@ -195,6 +204,27 @@ class WidgetConversationLoader
             : Group::where('name', $department)->first();
 
         return $group?->id;
+    }
+
+    protected function resolveAiAgentForGroup(int|null $groupId): AiAgent|null
+    {
+        $query = AiAgent::query()->where('enabled', true);
+
+        if ($groupId) {
+            $groupAgent = (clone $query)
+                ->where('group_id', $groupId)
+                ->orderBy('id')
+                ->first();
+
+            if ($groupAgent) {
+                return $groupAgent;
+            }
+        }
+
+        return $query
+            ->whereNull('group_id')
+            ->orderBy('id')
+            ->first();
     }
 
     protected function getQueuedChatInfo(int $chatId): array

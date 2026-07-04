@@ -34,6 +34,7 @@ export interface AiAgentStatusAgent {
   image?: string | null;
   enabled: boolean;
   status: 'connected' | 'disconnected' | 'error';
+  status_detail?: string | null;
   total_requests: number;
   successful_responses: number;
   response_time_ms: number | null;

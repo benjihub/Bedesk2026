@@ -38,6 +38,7 @@ return [
         '/dashboard/team/invites',
         '/dashboard/customers',
         '/dashboard/views',
+        '/dashboard/billing',
         '/dashboard/campaigns',
         '/dashboard/saved-replies',
         '/dashboard/livechat',

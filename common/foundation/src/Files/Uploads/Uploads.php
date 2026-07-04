@@ -14,6 +14,7 @@ class Uploads
 {
     const STRATEGY_SUBFOLDER = 'subfolder';
     const STRATEGY_FLAT = 'flat';
+    const FALLBACK_LOCAL_BACKEND_ID = 'local';
 
     public static function disk(
         string|UploadType $uploadType,
@@ -50,6 +51,10 @@ class Uploads
     ): array {
         $backends = settings('uploading.backends') ?? [];
 
+        if (empty($backends)) {
+            $backends[] = self::fallbackLocalBackend();
+        }
+
         $allBackends = array_map(
             fn($backend) => new UploadBackend($backend),
             $backends,
@@ -81,11 +86,20 @@ class Uploads
         $typeConfig = config('filesystems.upload_types');
         $userTypeConfig = settings('uploading.types') ?? [];
         $types = [];
+        $defaultBackendId = self::getDefaultBackendId();
 
         foreach ($typeConfig as $name => $config) {
-            $types[] = new UploadType($name, [
+            $config = [
                 ...$config,
                 ...$userTypeConfig[$name] ?? [],
+            ];
+
+            if (empty($config['backends'])) {
+                $config['backends'] = [$defaultBackendId];
+            }
+
+            $types[] = new UploadType($name, [
+                ...$config,
             ]);
         }
 
@@ -137,5 +151,22 @@ class Uploads
             'prefix' => $prefix ? $prefix : null,
             ...$backend->config,
         ]);
+    }
+
+    protected static function getDefaultBackendId(): string
+    {
+        $backends = settings('uploading.backends') ?? [];
+        $backend = Arr::first($backends);
+
+        return $backend['id'] ?? self::FALLBACK_LOCAL_BACKEND_ID;
+    }
+
+    protected static function fallbackLocalBackend(): array
+    {
+        return [
+            'id' => self::FALLBACK_LOCAL_BACKEND_ID,
+            'name' => 'Local',
+            'type' => 'local',
+        ];
     }
 }

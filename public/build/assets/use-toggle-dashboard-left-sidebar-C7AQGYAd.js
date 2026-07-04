@@ -1,0 +1,2 @@
+import{D as c}from"./main-BV2ChkTA.js";import{r as s,av as i}from"./client-Oxz8h_2h.js";function d(){const{leftSidenavStatus:t,setLeftSidenavStatus:e,name:a,isMobileMode:n}=s.useContext(c),r=s.useCallback(()=>{const o=t==="open"?"compact":"open";e(o),i(`${a}.sidenav.compact`,o==="compact")},[t,e,a]);return{leftSidenavStatus:t,toggleLeftSidenav:r,isMobileMode:n}}export{d as u};
+//# sourceMappingURL=use-toggle-dashboard-left-sidebar-C7AQGYAd.js.map

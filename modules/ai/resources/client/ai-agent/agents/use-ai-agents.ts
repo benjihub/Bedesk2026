@@ -3,6 +3,7 @@ import { apiClient } from '@common/http/query-client';
 
 export interface AiAgent {
   id: number;
+  group_id: number | null;
   name: string;
   image?: string;
   enabled: boolean;

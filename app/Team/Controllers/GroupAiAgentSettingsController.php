@@ -28,6 +28,7 @@ class GroupAiAgentSettingsController extends BaseController
         if (!is_array($overrides)) {
             $overrides = [];
         }
+        unset($overrides['image']);
 
         return $this->success([
             'overrides' => $overrides,
@@ -46,7 +47,6 @@ class GroupAiAgentSettingsController extends BaseController
         $data = $this->validate($request, [
             'overrides' => 'present|array',
             'overrides.name' => 'sometimes|string|min:2|max:255',
-            'overrides.image' => 'sometimes|nullable|string|max:500',
             'overrides.enabled' => 'sometimes|boolean',
             'overrides.personality' => 'sometimes|nullable|string',
             'overrides.greetingType' => 'sometimes|in:flow,basicGreeting',
@@ -100,6 +100,7 @@ class GroupAiAgentSettingsController extends BaseController
         if (!is_array($overrides)) {
             $overrides = [];
         }
+        unset($overrides['image']);
 
         \Log::debug('ai-agent-settings.update.request', ['groupId' => $groupId, 'overrides' => $overrides, 'raw' => $data]);
 
@@ -128,8 +129,8 @@ class GroupAiAgentSettingsController extends BaseController
 
         return array_replace_recursive(
             $this->getDefaultSettings(),
-            $current,
-            $overrides,
+            Arr::except($current, ['image']),
+            Arr::except($overrides, ['image']),
         );
     }
 
@@ -137,7 +138,6 @@ class GroupAiAgentSettingsController extends BaseController
     {
         return [
             'name' => 'AI assistant',
-            'image' => null,
             'enabled' => true,
             'personality' => '',
             'userIdRequestTemplates' => [

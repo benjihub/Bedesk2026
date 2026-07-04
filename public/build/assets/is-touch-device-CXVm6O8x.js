@@ -1,0 +1,2 @@
+import{a0 as c,r as e,bN as o,j as d,bO as f,bj as p}from"./client-Oxz8h_2h.js";const x=c.forwardRef((a,u)=>{const r=a.children,[t,s]=e.useState(null),n=e.useRef(null);return e.useImperativeHandle(u,()=>(l,i)=>{o.flushSync(()=>{s(r(l))}),i(n.current),requestAnimationFrame(()=>{s(null)})},[r]),t?o.createPortal(d.jsx("div",{style:{zIndex:-100,position:"absolute",top:0,left:-1e5},ref:n,children:t}),f):null});function h(){return p("((pointer: coarse))")}export{x as D,h as u};
+//# sourceMappingURL=is-touch-device-CXVm6O8x.js.map

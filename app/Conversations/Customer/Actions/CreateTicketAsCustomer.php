@@ -25,51 +25,55 @@ class CreateTicketAsCustomer
         // Make sure updated event is not fired until chat is fully created
         ConversationsUpdated::pauseDispatching();
 
-        $groupId = isset($data['group_id'])
-            ? Group::find($data['group_id'])?->id
-            : Group::findDefault()?->id;
-        $status = ConversationStatus::findOrGetDefaultOpen(
-            $data['status_id'] ?? null,
-        );
+        try {
+            $groupId = isset($data['group_id'])
+                ? Group::find($data['group_id'])?->id
+                : Group::findDefault()?->id;
+            $status = ConversationStatus::findOrGetDefaultOpen(
+                $data['status_id'] ?? null,
+            );
 
-        $conversation = $user->conversations()->create([
-            'type' => 'ticket',
-            'subject' => $data['subject'] ?? null,
-            'status_id' => $status->id,
-            'status_category' => $status->category,
-            'group_id' => $groupId,
-            'channel' => $data['channel'] ?? null,
-            'received_at_email' => $data['received_at_email'] ?? null,
-            // store the IP of the request that triggered this ticket
-            'request_ip' => getIp(),
-        ]);
+            $conversation = $user->conversations()->create([
+                'type' => 'ticket',
+                'subject' => $data['subject'] ?? null,
+                'status_id' => $status->id,
+                'status_category' => $status->category,
+                'group_id' => $groupId,
+                'channel' => $data['channel'] ?? null,
+                'received_at_email' => $data['received_at_email'] ?? null,
+                // store the IP of the request that triggered this ticket
+                'request_ip' => getIp(),
+            ]);
 
-        if (isset($data['attributes'])) {
-            $conversation->updateCustomAttributes($data['attributes']);
+            if (isset($data['attributes'])) {
+                $conversation->updateCustomAttributes($data['attributes']);
+            }
+
+            $data['message']['author'] = 'user';
+            $data['message']['user_id'] = $user->id;
+            $message = (new CreateConversationMessage())->execute(
+                $conversation,
+                $data['message'],
+            );
+
+            $conversation = ConversationsAssigner::assignConversationRoundRobin(
+                $conversation,
+            );
+
+            event(new ConversationCreated($conversation));
+
+            $this->sendTicketReceivedEmail($conversation, $message);
+
+            // notification to agent that ticket was created
+            $users = app(User::class)
+                ->whereNeedsNotificationFor(ConversationCreatedNotif::NOTIF_ID)
+                ->get();
+            Notification::send($users, new ConversationCreatedNotif($conversation));
+
+            return $conversation;
+        } finally {
+            ConversationsUpdated::resumeDispatching();
         }
-
-        $data['message']['author'] = 'user';
-        $data['message']['user_id'] = $user->id;
-        $message = (new CreateConversationMessage())->execute(
-            $conversation,
-            $data['message'],
-        );
-
-        $conversation = ConversationsAssigner::assignConversationRoundRobin(
-            $conversation,
-        );
-
-        event(new ConversationCreated($conversation));
-
-        $this->sendTicketReceivedEmail($conversation, $message);
-
-        // notification to agent that ticket was created
-        $users = app(User::class)
-            ->whereNeedsNotificationFor(ConversationCreatedNotif::NOTIF_ID)
-            ->get();
-        Notification::send($users, new ConversationCreatedNotif($conversation));
-
-        return $conversation;
     }
 
     protected function sendTicketReceivedEmail(

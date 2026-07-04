@@ -252,7 +252,20 @@ export const createFileUploadStore = ({settings, options}: StoreProps) =>
             //const next = pendingUploads.find(a => !!a.request);
             const next = uploads.find(u => u.status === 'pending');
             if (next) {
-              await startUploading(next, get());
+              try {
+                await startUploading(next, get());
+              } catch (e) {
+                const errorMessage =
+                  e instanceof Error ? e.message : 'Could not start upload';
+                get().updateFileUpload(next.file.id, {
+                  status: 'failed',
+                  errorMessage,
+                  request: undefined,
+                  timer: undefined,
+                });
+                next.options.onError?.(errorMessage, next.file as UploadedFile);
+                get().runQueue();
+              }
             } else {
               set(state => {
                 state.uploadStarted = false;

@@ -30,8 +30,18 @@ export const aiAgentRoutes: RouteObject[] = [
         loader: ({request}) => {
           const redirectResponse = aiAgentManageGuard();
           if (redirectResponse) return redirectResponse;
+          return queryClient.ensureQueryData(aiAgentQueries.status.index(''));
+        },
+      },
+      {
+        path: 'chat',
+        handle: {customDashboardLayout: true},
+        lazy: () => import('./chat/ai-agent-chat-page'),
+        loader: ({request}) => {
+          const redirectResponse = aiAgentManageGuard();
+          if (redirectResponse) return redirectResponse;
           return queryClient.ensureQueryData(
-            aiAgentQueries.status.index(searchParamsFromUrl(request.url).groupId),
+            aiAgentQueries.settings.index(searchParamsFromUrl(request.url).groupId),
           );
         },
       },
@@ -39,10 +49,12 @@ export const aiAgentRoutes: RouteObject[] = [
         path: 'settings',
         handle: {customDashboardLayout: true},
         lazy: () => import('./settings/settings-page'),
-        loader: () => {
+        loader: ({request}) => {
           const redirectResponse = aiAgentSettingsGuard();
           if (redirectResponse) return redirectResponse;
-          return queryClient.ensureQueryData(aiAgentQueries.settings.index());
+          return queryClient.ensureQueryData(
+            aiAgentQueries.settings.index(searchParamsFromUrl(request.url).groupId),
+          );
         },
       },
       {

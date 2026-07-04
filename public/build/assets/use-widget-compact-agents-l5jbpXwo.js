@@ -1,2 +1,0 @@
-import{w as r}from"./widget-queries-CwEHE-wM.js";import{n as o,r as a}from"./client-j9nNowi7.js";function i(){const{data:e,isLoading:s}=o(r.agents.compact());return{agents:a.useMemo(()=>((e==null?void 0:e.agents)??[]).map(n=>({...n,isOnline:!!n.wasActiveRecently})),[e]),isLoading:s}}function g(){const{agents:e,isLoading:s}=i();return{isLoading:s,agents:e.filter(t=>t.acceptsConversations&&t.wasActiveRecently)}}export{g as a,i as u};
-//# sourceMappingURL=use-widget-compact-agents-l5jbpXwo.js.map

@@ -4,6 +4,7 @@ namespace Livechat\Widget;
 
 use App\Conversations\Models\Conversation;
 use Ai\AiAgent\Conversations\AiAgent;
+use Ai\AiAgent\Conversations\GroupReplyEngineAdapter;
 use Ai\AiAgent\Conversations\GroupReplyEngine;
 use Ai\AiAgent\Models\AiAgentSession;
 use App\Core\WidgetFlags;
@@ -32,6 +33,10 @@ class HandleLatestUserMessage
                 !class_exists(AiAgent::class))
         ) {
             return;
+        }
+
+        if (class_exists(GroupReplyEngineAdapter::class)) {
+            return (new GroupReplyEngineAdapter($this->conversation))->handleLatestUserMessage();
         }
 
         if (class_exists(GroupReplyEngine::class)) {

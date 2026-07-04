@@ -9,7 +9,9 @@ import {SentimentNeutralIcon} from '@common/ui/library/icons/material/SentimentN
 import {SentimentSatisfiedIcon} from '@common/ui/library/icons/material/SentimentSatisfied';
 import {SentimentVerySatisfiedIcon} from '@common/ui/library/icons/material/SentimentVerySatisfied';
 import {useSuspenseQuery} from '@tanstack/react-query';
+import {useEffect} from 'react';
 import {useForm, useWatch} from 'react-hook-form';
+import {useSearchParams} from 'react-router';
 import {aiAgentQueries} from '../ai-agent-queries';
 
 const personalities = [
@@ -36,12 +38,19 @@ const personalities = [
 ];
 
 export function PersonalityPanel(props: Partial<AccordionItemProps>) {
-  const {data} = useSuspenseQuery(aiAgentQueries.settings.index());
+  const [searchParams] = useSearchParams();
+  const activeGroupId = searchParams.get('groupId');
+  const {data} = useSuspenseQuery(aiAgentQueries.settings.index(activeGroupId));
   const form = useForm<Partial<AiAgentSettings>>({
     defaultValues: {
       personality: data.settings.personality ?? 'neutral',
     },
   });
+  useEffect(() => {
+    form.reset({
+      personality: data.settings.personality ?? 'neutral',
+    });
+  }, [data.settings.personality, form]);
   const value = useWatch({control: form.control, name: 'personality'});
   return (
     <PanelLayout

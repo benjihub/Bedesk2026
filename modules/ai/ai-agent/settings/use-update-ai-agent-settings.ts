@@ -15,9 +15,13 @@ export function useUpdateAiAgentSettings(
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('groupId')
           : null;
+      const current = queryClient.getQueryData<any>(
+        aiAgentQueries.settings.index(groupId).queryKey,
+      ) as {settings?: AiAgentSettings} | undefined;
+      const merged = {...(current?.settings ?? {}), ...(values ?? {})};
 
       return apiClient.put('lc/ai-agent/settings', {
-        aiAgent: values,
+        aiAgent: merged,
         ...(groupId ? {groupId: Number(groupId)} : {}),
       });
     },

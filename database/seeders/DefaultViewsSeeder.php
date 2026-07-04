@@ -17,7 +17,7 @@ class DefaultViewsSeeder extends Seeder
         $data = [
             [
                 'key' => 'mine',
-                'name' => 'Your chats',
+                'name' => 'Assigned',
                 'pinned' => true,
                 'internal' => true,
                 'icon' => 'inbox',
@@ -42,7 +42,7 @@ class DefaultViewsSeeder extends Seeder
             ],
             [
                 'key' => 'unassigned',
-                'name' => 'Unassigned',
+                'name' => 'Ongoing',
                 'pinned' => true,
                 'internal' => false,
                 'icon' => 'unassigned',
@@ -67,7 +67,7 @@ class DefaultViewsSeeder extends Seeder
             ],
             [
                 'key' => 'closed',
-                'name' => 'Closed',
+                'name' => 'History',
                 'icon' => 'archive',
                 'pinned' => true,
                 'internal' => false,

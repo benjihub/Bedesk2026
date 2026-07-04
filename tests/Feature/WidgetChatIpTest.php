@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Conversations\Models\Conversation;
+use App\Conversations\Models\ConversationStatus;
+use Common\Auth\UserSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livechat\Chats\CreateChatAsCustomer;
 use App\Conversations\Agent\Actions\FullConversationLoader;
@@ -19,15 +22,27 @@ class WidgetChatIpTest extends TestCase
      */
     public function test_ip_address_saved_and_exposed_when_creating_widget_chat()
     {
+        ConversationStatus::query()->create([
+            'label' => 'Open',
+            'user_label' => 'Open',
+            'category' => Conversation::STATUS_OPEN,
+            'active' => true,
+            'internal' => false,
+        ]);
+
         // pick a sample public non-private IP so getIp() will happily return
         $ip = '203.0.113.42';
 
         // create a regular user and authenticate using the chatWidget guard
-        $user = User::factory()->create();
+        $user = User::query()->create([
+            'email' => 'widget-chat-1@example.test',
+            'password' => bcrypt('secret'),
+        ]);
         $this->actingAs($user, 'chatWidget');
 
-        // ensure the request helper will return our fake IP
-        $this->withServerVariables(['REMOTE_ADDR' => $ip]);
+        // ensure the current request helper returns our fake IP for direct action execution
+        request()->server->set('REMOTE_ADDR', $ip);
+        request()->server->set('HTTP_X_FORWARDED_FOR', $ip);
 
         // execute the action directly instead of hitting the streaming
         // controller endpoint (simpler for testing).
@@ -50,7 +65,17 @@ class WidgetChatIpTest extends TestCase
         // if session record somehow ends up with an empty string we should
         // still fall back to the request_ip value (previously frontend
         // would've hidden the field because empty string is falsy).
-        $conversation->user->latestUserSession->update(['ip_address' => '']);
+        UserSession::query()->create([
+            'user_id' => $conversation->user_id,
+            'ip_address' => '',
+            'browser' => 'unknown',
+            'country' => 'us',
+            'city' => 'New York',
+            'platform' => 'unknown',
+            'device' => 'unknown',
+            'user_agent' => 'test',
+            'updated_at' => now(),
+        ]);
         $data2 = (new FullConversationLoader())->loadData($conversation);
         $this->assertEquals($ip, $data2['session']['ip_address']);
     }
@@ -64,11 +89,21 @@ class WidgetChatIpTest extends TestCase
     public function test_loader_prefers_request_ip_if_session_missing()
     {
         $ip = '198.51.100.17';
-        $user = User::factory()->create();
+        $status = ConversationStatus::query()->create([
+            'label' => 'Open',
+            'user_label' => 'Open',
+            'category' => Conversation::STATUS_OPEN,
+            'active' => true,
+            'internal' => false,
+        ]);
+
+        $user = User::query()->create([
+            'email' => 'widget-chat-2@example.test',
+            'password' => bcrypt('secret'),
+        ]);
 
         // create a conversation manually with a request_ip value and ensure
         // the user has no sessions afterwards.
-        $status = \App\Conversations\Models\ConversationStatus::getDefaultOpen();
         $conversation = $user->conversations()->create([
             'type' => 'ticket',
             'status_id' => $status->id,

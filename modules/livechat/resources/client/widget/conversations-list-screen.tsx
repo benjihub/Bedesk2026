@@ -8,6 +8,7 @@ import {InfiniteScrollSentinel} from '@common/ui/infinite-scroll/infinite-scroll
 import {BulletSeparatedItems} from '@common/ui/other/bullet-seprated-items';
 import {widgetQueries} from '@livechat/widget/widget-queries';
 import {WidgetScreenHeader} from '@livechat/widget/widget-screen-header';
+import {useWidgetBootstrapData} from '@livechat/widget/hooks/use-widget-bootstrap-data';
 import {
   InfiniteData,
   useInfiniteQuery,
@@ -101,6 +102,7 @@ interface ConversationListItemProps {
   conversation: ConversationListItemType;
 }
 function ConversationListItem({conversation}: ConversationListItemProps) {
+  const {aiAgent} = useWidgetBootstrapData();
   const message = conversation.latest_message;
   if (!message) return null;
 
@@ -114,7 +116,7 @@ function ConversationListItem({conversation}: ConversationListItemProps) {
         conversation.status_category <= statusCategory.closed && 'bg-alt',
       )}
     >
-      <MessageAvatar size="lg" message={message} />
+      <MessageAvatar size="lg" message={message} aiAgent={aiAgent ?? null} />
       <div className="flex-auto text-sm">
         <div className="flex items-center gap-8">
           <BulletSeparatedItems className="text-muted">

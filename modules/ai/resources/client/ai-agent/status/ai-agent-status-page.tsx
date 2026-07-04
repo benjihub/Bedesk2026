@@ -3,6 +3,7 @@ import {AiAgentPageHeader} from '@ai/ai-agent/ai-agent-page-header';
 import {apiClient, queryClient} from '@common/http/query-client';
 import {showHttpErrorToast} from '@common/http/show-http-error-toast';
 import {Button} from '@common/ui/library/buttons/button';
+import {Avatar} from '@ui/avatar/avatar';
 import {FormattedDate} from '@ui/i18n/formatted-date';
 import {Trans} from '@ui/i18n/trans';
 import {ArrowForwardIcon} from '@ui/icons/material/ArrowForward';
@@ -143,36 +144,17 @@ function SummaryGrid({
       icon: <WifiOffIcon />,
       color: 'text-muted',
     },
-    {
-      label: 'Error',
-      value: summary?.error_agents ?? 0,
-      icon: <SyncProblemIcon />,
-      color: 'text-danger',
-    },
-    {
-      label: 'Total requests',
-      value: summary?.total_requests ?? 0,
-      icon: <BoltIcon />,
-      color: 'text-primary',
-    },
-    {
-      label: 'Successful responses',
-      value: summary?.successful_responses ?? 0,
-      icon: <CloudSyncIcon />,
-      color: 'text-positive',
-    },
+    // {
+    //   label: 'Error',
+    //   value: summary?.error_agents ?? 0,
+    //   icon: <SyncProblemIcon />,
+    //   color: 'text-danger',
+    // },
     {
       label: 'Average response time',
       value: formatMs(summary?.average_response_time_ms),
       icon: <TimerIcon />,
       color: 'text-warning',
-    },
-    {
-      label: 'Uptime',
-      value:
-        summary?.uptime_percent == null ? '—' : `${summary.uptime_percent}%`,
-      icon: <WifiIcon />,
-      color: 'text-primary',
     },
     {
       label: 'Token usage',
@@ -261,17 +243,12 @@ function AgentCard({
     <div className="rounded-panel border border-divider bg-surface p-18 shadow-sm">
       <div className="flex items-start justify-between gap-12">
         <div className="flex items-center gap-12">
-          <div className="flex h-44 w-44 items-center justify-center overflow-hidden rounded-full border border-divider bg-alt text-lg font-semibold text-main">
-            {agent.image ? (
-              <img
-                src={agent.image}
-                alt={agent.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span>{agent.name.charAt(0).toUpperCase()}</span>
-            )}
-          </div>
+          <Avatar
+            src={agent.image ?? undefined}
+            label={agent.name}
+            size="w-44 h-44"
+            className="border border-divider bg-alt text-lg font-semibold text-main"
+          />
           <div>
             <h2 className="text-lg font-semibold text-main">{agent.name}</h2>
             <div

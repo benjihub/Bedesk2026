@@ -32,7 +32,6 @@ class AiAgentSettingsController extends BaseController
             'groupId' => 'sometimes|nullable|integer|exists:groups,id',
             'aiAgent' => 'required|array',
             'aiAgent.name' => 'required|string|min:2|max:255',
-            'aiAgent.image' => 'nullable|string|max:500',
             'aiAgent.enabled' => 'sometimes|boolean',
             'aiAgent.personality' => 'nullable|string',
             'aiAgent.greetingType' => 'required|in:flow,basicGreeting',
@@ -65,6 +64,7 @@ class AiAgentSettingsController extends BaseController
             $this->getCurrentSettings($groupId),
             $settings,
         );
+        unset($settings['image']);
 
         // Normalize types for frontend expectations.
         if (!is_string(Arr::get($settings, 'personality', ''))) {
@@ -101,7 +101,6 @@ class AiAgentSettingsController extends BaseController
     {
         return [
             'name' => 'AI assistant',
-            'image' => null,
             'enabled' => true,
             'personality' => '',
             'greetingType' => 'basicGreeting',
@@ -167,8 +166,8 @@ class AiAgentSettingsController extends BaseController
 
             return array_replace_recursive(
                 $this->getDefaultSettings(),
-                $global,
-                $current,
+                Arr::except($global, ['image']),
+                Arr::except($current, ['image']),
             );
         }
 
@@ -178,7 +177,7 @@ class AiAgentSettingsController extends BaseController
             $current = [];
         }
 
-        return $current;
+        return Arr::except($current, ['image']);
     }
 
     protected function stripNulls(array $data): array

@@ -15,13 +15,18 @@ import {toast} from '@ui/toast/toast';
 import {message} from '@ui/i18n/message';
 import {useForm} from 'react-hook-form';
 import {AiAgent} from './use-ai-agents';
+import {AiAgentGroupSelectField} from './ai-agent-group-select';
+import {aiAgentQueries} from '@ai/ai-agent/ai-agent-queries';
+import {AiAgentAvatarField} from './ai-agent-avatar-field';
 
 interface Props {
   agent: AiAgent;
 }
 
 interface UpdateAiAgentPayload {
+  groupId: string | null;
   name: string;
+  image?: string;
   enabled: boolean;
   personality?: string;
   greeting_type?: string;
@@ -33,7 +38,9 @@ export function EditAiAgentDialog({agent}: Props) {
 
   const form = useForm<UpdateAiAgentPayload>({
     defaultValues: {
+      groupId: agent.group_id ? String(agent.group_id) : '',
       name: agent.name,
+      image: agent.image ?? '',
       enabled: agent.enabled,
       personality: agent.personality,
       greeting_type: agent.greeting_type,
@@ -43,9 +50,15 @@ export function EditAiAgentDialog({agent}: Props) {
 
   const updateAgent = useMutation({
     mutationFn: (payload: UpdateAiAgentPayload) =>
-      apiClient.put(`lc/ai-agent/agents/${agent.id}`, payload),
+      apiClient.put(`lc/ai-agent/agents/${agent.id}`, {
+        ...payload,
+        groupId: payload.groupId || null,
+        image: payload.image || null,
+      }),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({queryKey: ['ai-agents']});
       await queryClient.invalidateQueries({queryKey: ['lc', 'ai-agent', 'agents']});
+      await queryClient.invalidateQueries({queryKey: aiAgentQueries.status.invalidateKey});
       toast(message('Agent updated'));
       close();
     },
@@ -61,10 +74,17 @@ export function EditAiAgentDialog({agent}: Props) {
         <Form
           form={form}
           id={formId}
-          onSubmit={data => updateAgent.mutate(data)}
+          onSubmit={data =>
+            updateAgent.mutate({
+              ...data,
+              groupId: data.groupId || null,
+            })
+          }
           className="space-y-16"
         >
+          <AiAgentGroupSelectField />
           <FormTextField name="name" label={<Trans message="Agent name" />} autoFocus required />
+          <AiAgentAvatarField form={form} />
           <FormSwitch name="enabled">
             <Trans message="Enabled" />
           </FormSwitch>

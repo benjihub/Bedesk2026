@@ -1,0 +1,2 @@
+import{j as e,aB as o,T as a}from"./client-Oxz8h_2h.js";import{R as r}from"./visible-to-field-DGQnylLb.js";function l({className:s,description:n}){return e.jsx(r,{className:s,name:"managed_by_role",label:e.jsx(a,{message:"Managed by"}),description:n,defaultItem:e.jsx(o,{value:"",children:e.jsx(a,{message:"Anyone with permissions"})},"anyone-default")})}export{l as M};
+//# sourceMappingURL=managed-by-field-C0LqVAqD.js.map

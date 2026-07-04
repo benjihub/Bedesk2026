@@ -2,6 +2,7 @@
 
 namespace Livechat\Actions;
 
+use Ai\AiAgent\Models\AiAgent;
 use Common\Settings\Themes\CssTheme;
 use Common\Websockets\GetWebsocketCredentialsForClient;
 use Illuminate\Database\Eloquent\Builder;
@@ -58,8 +59,8 @@ class WidgetBootstrapData extends BaseBootstrapData
         // Merge group-specific widget settings if department is provided.
         // "department" can be either a numeric group id or a group name,
         // same as in CreateChatAsCustomer.
+        $group = null;
         if ($department) {
-            $group = null;
             if (is_numeric($department)) {
                 $group = Group::with('settings')->find((int) $department);
             } else {
@@ -78,10 +79,19 @@ class WidgetBootstrapData extends BaseBootstrapData
             }
         }
 
+        $aiAgent = $this->resolveAiAgentForGroup($group?->id ?? null);
+
         $this->data = [
             'themes' => $this->getThemes(),
             'activeConversationData' => $activeConversation,
             'user' => new WidgetCustomerResource($customer),
+            'aiAgent' => $aiAgent
+                ? [
+                    'id' => $aiAgent->id,
+                    'name' => $aiAgent->name,
+                    'image' => $aiAgent->image,
+                ]
+                : null,
             'visitorId' => $visitorId,
             'guest_role' => app('guestRole')?->load('permissions'),
             'settings' => $settings,
@@ -106,6 +116,27 @@ class WidgetBootstrapData extends BaseBootstrapData
         if ($this->data['user']) {
             $this->data['user']->createOrTouchSession();
         }
+    }
+
+    protected function resolveAiAgentForGroup(int|null $groupId): AiAgent|null
+    {
+        $query = AiAgent::query()->where('enabled', true);
+
+        if ($groupId) {
+            $groupAgent = (clone $query)
+                ->where('group_id', $groupId)
+                ->orderBy('id')
+                ->first();
+
+            if ($groupAgent) {
+                return $groupAgent;
+            }
+        }
+
+        return $query
+            ->whereNull('group_id')
+            ->orderBy('id')
+            ->first();
     }
 
     public function getThemes(): Collection

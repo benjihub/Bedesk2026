@@ -12,14 +12,19 @@ interface MessageAvatarProps {
   message: Pick<ConversationMessage, 'author' | 'user'>;
   size?: AvatarProps['size'];
   agentWithIndicator?: boolean;
+  aiAgent?: {
+    name?: string | null;
+    image?: string | null;
+  } | null;
 }
 export function MessageAvatar({
   message,
   size,
   agentWithIndicator,
+  aiAgent,
 }: MessageAvatarProps) {
   if (message.author === 'bot') {
-    return <AiAgentAvatar size={size} />;
+    return <AiAgentAvatar size={size} aiAgent={aiAgent} />;
   }
   if (message.author === 'user') {
     return message.user ? (

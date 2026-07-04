@@ -10,6 +10,7 @@ import {Button} from '@common/ui/library/buttons/button';
 import {Trans} from '@common/ui/library/i18n/trans';
 import {MediaPauseIcon} from '@common/ui/library/icons/media/media-pause';
 import {MediaPlayIcon} from '@common/ui/library/icons/media/media-play';
+import {useAuth} from '@common/auth/use-auth';
 import {Tab} from '@common/ui/library/tabs/tab';
 import {TabList} from '@common/ui/library/tabs/tab-list';
 import {Tabs} from '@common/ui/library/tabs/tabs';
@@ -31,15 +32,31 @@ const tabConfig = [
   {uri: 'ai-agent/knowledge', label: {message: 'Knowledge'}},
   {uri: 'ai-agent/flows', label: {message: 'Flows'}},
   {uri: 'ai-agent/tools', label: {message: 'Tools'}},
+  {uri: 'ai-agent/chat', label: {message: 'Chat test'}},
 ];
 
+// Keep optional areas routable but hidden from primary navigation.
+const HIDE_OPTIONAL_AI_TABS = true;
+const OPTIONAL_AI_TAB_URIS = new Set([
+  'ai-agent/knowledge',
+  'ai-agent/flows',
+  'ai-agent/tools',
+]);
+
 function HeaderTabs() {
+  const {hasPermission} = useAuth();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useUrlBackedTabs(tabConfig);
+  const tabsForPermission = hasPermission('ai_agent.update')
+    ? tabConfig
+    : tabConfig.filter(tab => tab.uri === 'ai-agent/settings');
+  const visibleTabs = HIDE_OPTIONAL_AI_TABS
+    ? tabsForPermission.filter(tab => !OPTIONAL_AI_TAB_URIS.has(tab.uri))
+    : tabsForPermission;
+  const [activeTab, setActiveTab] = useUrlBackedTabs(visibleTabs);
   return (
     <Tabs selectedTab={activeTab} onTabChange={setActiveTab}>
       <TabList className="px-24">
-        {tabConfig.map(tab => (
+        {visibleTabs.map(tab => (
           <Tab
             key={tab.uri}
             elementType={Link}
@@ -56,10 +73,12 @@ function HeaderTabs() {
 type AiAgentPageHeaderProps = {
   previewVisible?: boolean;
   onTogglePreview?: () => void;
+  showGroupScopeSelect?: boolean;
 };
 export function AiAgentPageHeader({
   previewVisible,
   onTogglePreview,
+  showGroupScopeSelect = true,
 }: AiAgentPageHeaderProps) {
   return (
     <div>
@@ -72,6 +91,7 @@ export function AiAgentPageHeader({
           <AiAgentPageHeaderActions
             previewVisible={previewVisible}
             onTogglePreview={onTogglePreview}
+            showGroupScopeSelect={showGroupScopeSelect}
           />
         }
         border="border-none"
@@ -86,10 +106,11 @@ export function AiAgentPageHeader({
 export function AiAgentPageHeaderActions({
   previewVisible,
   onTogglePreview,
+  showGroupScopeSelect = true,
 }: AiAgentPageHeaderProps) {
   return (
     <Fragment>
-      <GroupScopeSelect />
+      {showGroupScopeSelect ? <GroupScopeSelect /> : null}
       <LearnButton />
       {!!onTogglePreview && (
         <TogglePreviewButton
@@ -103,12 +124,8 @@ export function AiAgentPageHeaderActions({
 }
 
 function GroupScopeSelect() {
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useQuery(helpdeskQueries.groups.normalizedList);
-  if (location.pathname.endsWith('/settings')) {
-    return null;
-  }
   const groupId = searchParams.get('groupId') ?? '';
 
   return (
@@ -162,6 +179,19 @@ const learnItems = [
   },
 ];
 
+function visibleLearnItems() {
+  if (!HIDE_OPTIONAL_AI_TABS) return learnItems;
+
+  return learnItems.filter(item => {
+    const url = item.url.toLowerCase();
+    return !(
+      url.includes('knowledge') ||
+      url.includes('flows') ||
+      url.includes('tools')
+    );
+  });
+}
+
 function LearnButton() {
   return (
     <MenuTrigger>
@@ -174,7 +204,7 @@ function LearnButton() {
         <Trans message="Learn" />
       </Button>
       <Menu>
-        {learnItems.map(item => (
+        {visibleLearnItems().map(item => (
           <Item
             key={item.url}
             value={item.url}
@@ -192,7 +222,9 @@ function LearnButton() {
 
 function ToggleButton() {
   const isMobile = useIsMobileMediaQuery();
-  const {data} = useSuspenseQuery(aiAgentQueries.settings.index());
+  const [searchParams] = useSearchParams();
+  const activeGroupId = searchParams.get('groupId');
+  const {data} = useSuspenseQuery(aiAgentQueries.settings.index(activeGroupId));
   const updateSettings = useUpdateAiAgentSettings();
 
   if (data.settings.enabled) {

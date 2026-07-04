@@ -1,2 +1,0 @@
-import{g as a,j as s,B as n,T as e}from"./client-j9nNowi7.js";import{u as r}from"./use-is-module-installed-DLEAXl_a.js";import{C as l}from"./dashboard-icons-Tvq_fXQF.js";function I({previewIsVisible:t,onTogglePreview:o}){const i=a();return r("livechat")?s.jsx(n,{startIcon:s.jsx(l,{}),size:"xs",variant:"outline",color:t?"primary":void 0,onClick:()=>{o()},children:i?s.jsx(e,{message:"Test"}):s.jsx(e,{message:"Test AI Agent"})}):null}export{I as T};
-//# sourceMappingURL=toggle-preview-button-Bw4FI9Tl.js.map

@@ -37,6 +37,10 @@ export const dashboardRoutes: RouteObject[] = [
           queryClient.ensureQueryData(notificationSubscriptionsQueryOptions),
       },
       {
+        path: 'billing',
+        lazy: () => import('@app/dashboard/billing/billing-page'),
+      },
+      {
         path: 'livechat',
         handle: {customDashboardLayout: true},
         lazy: () => import('@livechat/admin/settings/livechat-settings'),
@@ -50,9 +54,7 @@ export const dashboardRoutes: RouteObject[] = [
         path: 'conversations/new',
         handle: {customDashboardLayout: true},
         lazy: () =>
-          import(
-            '@app/dashboard/conversations/new-conversation-page/new-conversation-page'
-          ),
+          import('@app/dashboard/conversations/new-conversation-page/new-conversation-page'),
         loader: async () =>
           Promise.allSettled([
             queryClient.ensureQueryData(
@@ -149,9 +151,7 @@ export const dashboardRoutes: RouteObject[] = [
             path: 'conversations',
             shouldRevalidate: shouldRevalidateDatatableLoader,
             lazy: () =>
-              import(
-                '@app/dashboard/conversations/conversations-table/conversations-table-page'
-              ),
+              import('@app/dashboard/conversations/conversations-table/conversations-table-page'),
             loader: () =>
               queryClient.ensureQueryData(
                 helpdeskQueries.attributes.normalizedList({
@@ -163,9 +163,7 @@ export const dashboardRoutes: RouteObject[] = [
           {
             path: 'conversations/:conversationId',
             lazy: () =>
-              import(
-                '@app/dashboard/conversations/conversation-page/conversation-page'
-              ),
+              import('@app/dashboard/conversations/conversation-page/conversation-page'),
             loader: async ({params}) => {
               return Promise.allSettled([
                 queryClient.ensureQueryData(

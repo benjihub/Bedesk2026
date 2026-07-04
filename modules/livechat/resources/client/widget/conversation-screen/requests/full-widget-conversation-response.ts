@@ -23,6 +23,11 @@ export interface FullWidgetConversationResponse {
       name: string;
       image: string;
     } | null;
+    ai_agent?: {
+      id: number;
+      name: string;
+      image: string | null;
+    } | null;
   };
   items: CursorPaginationResponse<ConversationContentItem>;
   hasPostChatForm: boolean;

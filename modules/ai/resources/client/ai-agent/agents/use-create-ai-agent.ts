@@ -4,9 +4,12 @@ import { UseFormReturn } from 'react-hook-form';
 import { showHttpErrorToast } from '@common/http/show-http-error-toast';
 import { toast } from '@ui/toast/toast';
 import {message} from '@ui/i18n/message';
+import {aiAgentQueries} from '@ai/ai-agent/ai-agent-queries';
 
 interface CreateAiAgentPayload {
+  groupId: string;
   name: string;
+  image?: string;
   enabled: boolean;
   personality: string;
   greeting_type: string;
@@ -19,13 +22,18 @@ export function useCreateAiAgent(form: UseFormReturn<CreateAiAgentPayload>) {
   return useMutation({
     mutationFn: (payload: CreateAiAgentPayload) => {
       console.debug('Creating AI agent', payload);
-      return apiClient.post('lc/ai-agent/agents', payload);
+      return apiClient.post('lc/ai-agent/agents', {
+        ...payload,
+        groupId: payload.groupId || null,
+        image: payload.image || null,
+      });
     },
     onSuccess: () => {
       toast(message('Agent created'));
       // invalidate both the simple ai-agents key and the datatable endpoint key
       queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
       queryClient.invalidateQueries({ queryKey: ['lc', 'ai-agent', 'agents'] });
+      queryClient.invalidateQueries({ queryKey: aiAgentQueries.status.invalidateKey });
       form.reset();
     },
     onError: (err) => {

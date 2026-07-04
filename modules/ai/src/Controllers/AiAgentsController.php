@@ -83,7 +83,9 @@ class AiAgentsController extends BaseController
 
         $agent->update([
             ...$data,
-            'group_id' => $this->resolveGroupId($request) ?? $agent->group_id,
+            'group_id' => $request->exists('groupId')
+                ? $this->resolveGroupId($request)
+                : $agent->group_id,
         ]);
 
         return $this->success(['agent' => $agent]);
@@ -109,13 +111,14 @@ class AiAgentsController extends BaseController
     {
         $groupId = $this->resolveGroupId($request);
 
-        return AiAgent::query()->where(function ($query) use ($groupId) {
-            if ($groupId) {
-                $query->whereNull('group_id')->orWhere('group_id', $groupId);
-                return;
-            }
+        $query = AiAgent::query();
 
-            $query->whereNull('group_id');
-        });
+        if ($groupId) {
+            $query->where(function ($query) use ($groupId) {
+                $query->whereNull('group_id')->orWhere('group_id', $groupId);
+            });
+        }
+
+        return $query;
     }
 }

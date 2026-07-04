@@ -1,0 +1,2 @@
+import{r as t,j as e,o as i}from"./client-Oxz8h_2h.js";function c({children:l,className:n}){const r=t.Children.toArray(l);return e.jsx("div",{className:i("flex items-center gap-4 overflow-hidden",n),children:r.map((a,s)=>e.jsxs(t.Fragment,{children:[e.jsx("div",{children:a}),s<r.length-1?e.jsx("div",{children:"•"}):null]},s))})}export{c as B};
+//# sourceMappingURL=bullet-seprated-items-BmLpojPq.js.map

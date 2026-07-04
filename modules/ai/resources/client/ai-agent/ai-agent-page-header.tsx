@@ -29,17 +29,29 @@ const tabConfig = [
   {uri: 'ai-agent/status', label: {message: 'Status'}},
   {uri: 'ai-agent/agents', label: {message: 'Agents'}},
   {uri: 'ai-agent/settings', label: {message: 'Settings'}},
+  {uri: 'ai-agent/chat', label: {message: 'Chat'}},
   {uri: 'ai-agent/knowledge', label: {message: 'Knowledge'}},
   {uri: 'ai-agent/flows', label: {message: 'Flows'}},
   {uri: 'ai-agent/tools', label: {message: 'Tools'}},
 ];
 
+// Keep optional areas wired and routable, but hide them from primary nav for now.
+const HIDE_OPTIONAL_AI_TABS = true;
+const OPTIONAL_AI_TAB_URIS = new Set([
+  'ai-agent/knowledge',
+  'ai-agent/flows',
+  'ai-agent/tools',
+]);
+
 function HeaderTabs() {
   const {hasPermission} = useAuth();
   const location = useLocation();
-  const visibleTabs = hasPermission('ai_agent.update')
+  const tabsForPermission = hasPermission('ai_agent.update')
     ? tabConfig
     : tabConfig.filter(tab => tab.uri === 'ai-agent/settings');
+  const visibleTabs = HIDE_OPTIONAL_AI_TABS
+    ? tabsForPermission.filter(tab => !OPTIONAL_AI_TAB_URIS.has(tab.uri))
+    : tabsForPermission;
   const [activeTab, setActiveTab] = useUrlBackedTabs(visibleTabs);
   return (
     <Tabs selectedTab={activeTab} onTabChange={setActiveTab}>
@@ -163,6 +175,19 @@ const learnItems = [
   },
 ];
 
+function visibleLearnItems() {
+  if (!HIDE_OPTIONAL_AI_TABS) return learnItems;
+
+  return learnItems.filter(item => {
+    const url = item.url.toLowerCase();
+    return !(
+      url.includes('knowledge') ||
+      url.includes('flows') ||
+      url.includes('tools')
+    );
+  });
+}
+
 function LearnButton() {
   return (
     <MenuTrigger>
@@ -175,7 +200,7 @@ function LearnButton() {
         <Trans message="Learn" />
       </Button>
       <Menu>
-        {learnItems.map(item => (
+        {visibleLearnItems().map(item => (
           <Item
             key={item.url}
             value={item.url}

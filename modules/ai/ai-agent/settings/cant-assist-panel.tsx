@@ -5,13 +5,17 @@ import {FormTextField} from '@common/ui/library/forms/input-field/text-field/tex
 import {Trans} from '@common/ui/library/i18n/trans';
 import {FeedbackIcon} from '@common/ui/library/icons/material/Feedback';
 import {useSuspenseQuery} from '@tanstack/react-query';
+import {useEffect} from 'react';
 import {useTrans} from '@ui/i18n/use-trans';
+import {useSearchParams} from 'react-router';
 import {useForm} from 'react-hook-form';
 import {aiAgentQueries} from '../ai-agent-queries';
 
 export function CantAssistPanel(props: Partial<AccordionItemProps>) {
   const {trans} = useTrans();
-  const {data} = useSuspenseQuery(aiAgentQueries.settings.index());
+  const [searchParams] = useSearchParams();
+  const activeGroupId = searchParams.get('groupId');
+  const {data} = useSuspenseQuery(aiAgentQueries.settings.index(activeGroupId));
   const form = useForm<Partial<AiAgentSettings>>({
     defaultValues: {
       cantAssist: {
@@ -19,6 +23,13 @@ export function CantAssistPanel(props: Partial<AccordionItemProps>) {
       },
     },
   });
+  useEffect(() => {
+    form.reset({
+      cantAssist: {
+        instruction: data.settings.cantAssist?.instruction ?? '',
+      },
+    });
+  }, [data.settings.cantAssist?.instruction, form]);
 
   return (
     <PanelLayout

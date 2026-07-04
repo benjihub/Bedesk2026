@@ -32,12 +32,14 @@ const defaultIcons = {
   '/dashboard/hc/arrange': dashboardIcons.library,
   '/dashboard/customers': dashboardIcons.users,
   '/dashboard/saved-replies': dashboardIcons.saveReplies,
+  '/dashboard/billing': dashboardIcons.billing,
 };
 
 export function HelpdeskDashboardSidebar(props: DashboardSidenavChildrenProps) {
   const {isCompactMode = false} = props;
   const {hasPermission} = useAuth();
   const isOwner = hasPermission('admin') || hasPermission('superAdmin');
+  const BillingIcon = dashboardIcons.billing;
 
   const customMenuRender = useCallback(
     (item: MenuItemConfig, menuItemProps: MenuItemProps) => (
@@ -59,15 +61,25 @@ export function HelpdeskDashboardSidebar(props: DashboardSidenavChildrenProps) {
   const bottomContent = (
     <Fragment>
       {isOwner && (
-        <DashboardLeftSidebarItem
-          elementType={Link}
-          target="_blank"
-          to="/admin/settings/general"
-          isCompact={isCompactMode}
-        >
-          <SettingsIcon />
-          <Trans message="Settings" />
-        </DashboardLeftSidebarItem>
+        <Fragment>
+          <DashboardLeftSidebarItem
+            elementType={Link}
+            to="/dashboard/billing"
+            isCompact={isCompactMode}
+          >
+            <BillingIcon />
+            <Trans message="Billing" />
+          </DashboardLeftSidebarItem>
+          <DashboardLeftSidebarItem
+            elementType={Link}
+            target="_blank"
+            to="/admin/settings/general"
+            isCompact={isCompactMode}
+          >
+            <SettingsIcon />
+            <Trans message="Settings" />
+          </DashboardLeftSidebarItem>
+        </Fragment>
       )}
       <NotificationsItem isCompact={isCompactMode} />
       <AdminSidebarAuthUserItem

@@ -13,18 +13,30 @@ import {useSettings} from '@ui/settings/use-settings';
 import {Tooltip} from '@ui/tooltip/tooltip';
 import {m} from 'framer-motion';
 import {Fragment, ReactNode, useEffect, useRef, useState} from 'react';
+import {useSearchParams} from 'react-router';
 
 interface Props {
   flowId?: number | string;
   resetConversationMessage?: (resetConversation: () => void) => ReactNode;
+  onPreviewStateChange?: (state: PreviewSidebarState) => void;
   onClose: () => void;
 }
+
+export interface PreviewSidebarState {
+  conversationId: string | null;
+  isLoading: boolean;
+  src: string;
+  activeGroupId: string | null;
+}
+
 export function PreviewSidebar({
   flowId,
   resetConversationMessage,
+  onPreviewStateChange,
   onClose,
 }: Props) {
   const {base_url} = useSettings();
+  const [searchParams] = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +57,25 @@ export function PreviewSidebar({
   if (flowId) {
     src += `?flowId=${flowId}`;
   }
+
+  const activeGroupId = searchParams.get('groupId');
+  if (activeGroupId) {
+    src += `${src.includes('?') ? '&' : '?'}department=${encodeURIComponent(activeGroupId)}`;
+  }
+
+  useEffect(() => {
+    setIsLoading(true);
+    setConversationId(null);
+  }, [src]);
+
+  useEffect(() => {
+    onPreviewStateChange?.({
+      conversationId,
+      isLoading,
+      src,
+      activeGroupId,
+    });
+  }, [activeGroupId, conversationId, isLoading, onPreviewStateChange, src]);
 
   const handleResetConversation = () => {
     if (!iframeRef.current) return;

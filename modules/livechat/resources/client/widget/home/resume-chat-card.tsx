@@ -2,6 +2,7 @@ import {MessageAuthorName} from '@app/dashboard/conversations/conversation-page/
 import {MessageAvatar} from '@app/dashboard/conversations/conversation-page/messages/message-avatar';
 import {useWidgetChatMessages} from '@livechat/widget/conversation-screen/requests/use-widget-chat-messages';
 import {HomeScreenCardLayout} from '@livechat/widget/home/home-screen-card-layout';
+import {useWidgetBootstrapData} from '@livechat/widget/hooks/use-widget-bootstrap-data';
 import {widgetQueries} from '@livechat/widget/widget-queries';
 import {useQuery} from '@tanstack/react-query';
 import {Trans} from '@ui/i18n/trans';
@@ -23,6 +24,7 @@ export function ResumeChatCard({chatId}: Props) {
   const chatQuery = useQuery(widgetQueries.conversations.get(chatId));
   const messagesQuery = useWidgetChatMessages(chatId);
   const {chatWidget} = useSettings();
+  const {aiAgent} = useWidgetBootstrapData();
   const {trans} = useTrans();
   const navigate = useNavigate();
 
@@ -45,7 +47,12 @@ export function ResumeChatCard({chatId}: Props) {
       <div className="px-24 py-20">
         <div className="mb-20 flex items-start gap-14">
           <div className="relative flex-shrink-0">
-            <MessageAvatar message={lastMsg} size="w-52 h-52" agentWithIndicator />
+            <MessageAvatar
+              message={lastMsg}
+              size="w-52 h-52"
+              agentWithIndicator
+              aiAgent={aiAgent ?? null}
+            />
             {lastMsg.author === 'bot' ? (
               <div className="absolute left-0 top-0 h-14 w-14 rounded-full border-2 border bg-positive" />
             ) : null}

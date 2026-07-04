@@ -1,5 +1,5 @@
 import React from 'react';
-import { AiAgent } from './use-ai-agents';
+import type {AiAgent as AiAgentModel} from './use-ai-agents';
 import { IconButton } from '@ui/buttons/icon-button';
 import { EditIcon } from '@ui/icons/material/Edit';
 import { DeleteIcon } from '@ui/icons/material/Delete';
@@ -8,7 +8,7 @@ import {EditAiAgentDialog} from './edit-ai-agent-dialog';
 import {DeleteAiAgentDialog} from './delete-ai-agent-dialog';
 
 interface Props {
-  agent: AiAgent;
+  agent: AiAgentModel;
 }
 
 export function AiAgent({ agent }: Props) {

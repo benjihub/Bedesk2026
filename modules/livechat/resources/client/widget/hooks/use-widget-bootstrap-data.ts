@@ -9,6 +9,11 @@ import {
 export interface WidgetBootstrapData {
   activeConversationData?: FullWidgetConversationResponse;
   user: WidgetCustomer;
+  aiAgent?: {
+    id: number;
+    name: string;
+    image: string | null;
+  } | null;
   scopedHcCategoryId?: number;
   department?: string | null;
   visitorId?: string | null;

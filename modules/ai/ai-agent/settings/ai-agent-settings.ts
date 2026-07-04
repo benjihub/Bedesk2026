@@ -1,6 +1,5 @@
 export interface AiAgentSettings {
   name: string;
-  image: string;
   enabled: boolean;
   personality: string;
   greetingType: 'flow' | 'basicGreeting';

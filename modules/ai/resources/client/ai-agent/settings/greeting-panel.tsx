@@ -11,9 +11,13 @@ import {FormSelect} from '@ui/forms/select/select';
 import {Trans} from '@ui/i18n/trans';
 import {createSvgIcon} from '@ui/icons/create-svg-icon';
 import {useForm, useWatch} from 'react-hook-form';
+import {useEffect} from 'react';
+import {useSearchParams} from 'react-router';
 
 export function GreetingPanel(props: Partial<AccordionItemProps>) {
-  const {data} = useSuspenseQuery(aiAgentQueries.settings.index());
+  const [searchParams] = useSearchParams();
+  const activeGroupId = searchParams.get('groupId');
+  const {data} = useSuspenseQuery(aiAgentQueries.settings.index(activeGroupId));
   const form = useForm<Partial<AiAgentSettings>>({
     defaultValues: {
       greetingType: data.settings.greetingType ?? 'basicGreeting',
@@ -24,6 +28,23 @@ export function GreetingPanel(props: Partial<AccordionItemProps>) {
       },
     },
   });
+  useEffect(() => {
+    form.reset({
+      greetingType: data.settings.greetingType ?? 'basicGreeting',
+      initialFlowId: data.settings.initialFlowId ?? data.flows[0]?.id ?? '',
+      basicGreeting: {
+        message: data.settings.basicGreeting?.message ?? '',
+        flowIds: data.settings.basicGreeting?.flowIds ?? [],
+      },
+    });
+  }, [
+    data.flows,
+    data.settings.basicGreeting?.flowIds,
+    data.settings.basicGreeting?.message,
+    data.settings.greetingType,
+    data.settings.initialFlowId,
+    form,
+  ]);
   const greetingType = useWatch({control: form.control, name: 'greetingType'});
 
   return (

@@ -11,15 +11,14 @@ export function useUpdateAiAgentSettings(
 ) {
   return useMutation({
     mutationFn: (values: Partial<AiAgentSettings>) => {
-      // merge with current settings so partial panel updates won't omit required fields
-      const current = queryClient.getQueryData<any>(
-        aiAgentQueries.settings.index().queryKey,
-      ) as {settings?: AiAgentSettings} | undefined;
-      const merged = {...(current?.settings ?? {}), ...(values ?? {})};
       const groupId =
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('groupId')
           : null;
+      const current = queryClient.getQueryData<any>(
+        aiAgentQueries.settings.index(groupId).queryKey,
+      ) as {settings?: AiAgentSettings} | undefined;
+      const merged = {...(current?.settings ?? {}), ...(values ?? {})};
 
       return apiClient.put('lc/ai-agent/settings', {
         aiAgent: merged,

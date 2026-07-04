@@ -14,6 +14,8 @@ import {GroupIcon} from '@ui/icons/material/Group';
 import {HomeIcon} from '@ui/icons/material/Home';
 import {InboxIcon} from '@ui/icons/material/Inbox';
 import {Inventory2Icon} from '@ui/icons/material/Inventory2';
+import {LoopIcon} from '@ui/icons/material/Loop';
+import {PaymentsIcon} from '@ui/icons/material/Payments';
 import {SellIcon} from '@ui/icons/material/Sell';
 import {SupervisorAccountIcon} from '@ui/icons/material/SupervisorAccount';
 import {SvgIconProps} from '@ui/icons/svg-icon';
@@ -21,6 +23,7 @@ import {UnassignedIcon} from '@ui/icons/unassigned';
 
 export const dashboardIcons = {
   inbox: InboxIcon,
+  ongoing: LoopIcon,
   archive: Inventory2Icon,
   unassigned: UnassignedIcon,
   home: HomeIcon,
@@ -33,6 +36,7 @@ export const dashboardIcons = {
   reports: ChartNoAxesCombinedIcon,
   library: LibraryIcon,
   users: AccountCircleIcon,
+  billing: PaymentsIcon,
   views: DashboardIconMaterial,
   saveReplies: ChatPasteGoIcon,
   favorite: FavoriteBorderIcon,

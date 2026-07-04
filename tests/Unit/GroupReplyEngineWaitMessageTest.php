@@ -74,7 +74,8 @@ class GroupReplyEngineWaitMessageTest extends TestCase
 
     public function test_cancel_deposit_mid_flow_also_skips_userid()
     {
-        $conversation = Conversation::factory()->create();
+        $conversation = new Conversation();
+        $conversation->id = 40003;
         AiAgentSession::create([
             'conversation_id' => $conversation->id,
             'status' => AiAgentSession::STATUS_ACTIVE,
