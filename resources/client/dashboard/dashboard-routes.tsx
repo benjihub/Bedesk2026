@@ -37,6 +37,10 @@ export const dashboardRoutes: RouteObject[] = [
           queryClient.ensureQueryData(notificationSubscriptionsQueryOptions),
       },
       {
+        path: 'billing/history',
+        lazy: () => import('@app/dashboard/billing/billing-history-page'),
+      },
+      {
         path: 'billing',
         lazy: () => import('@app/dashboard/billing/billing-page'),
       },

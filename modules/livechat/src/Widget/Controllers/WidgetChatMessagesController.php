@@ -2,6 +2,7 @@
 
 namespace Livechat\Widget\Controllers;
 
+use Ai\AiAgent\Models\AiAgentSession;
 use Ai\AiAgent\Conversations\Streaming\EventEmitter;
 use App\Conversations\Actions\PaginateConversationItems;
 use App\Conversations\Customer\Actions\SubmitMessageAsCustomer;
@@ -57,6 +58,7 @@ class WidgetChatMessagesController extends BaseController
                 'message.uuid' => 'string',
                 'message.attachments' => 'required_without:message.body|array',
                 'message.attachments.*' => 'int|exists:file_entries,id',
+                'aiAgentId' => 'int|nullable|exists:ai_agents,id',
             ]);
         } catch (ModelNotFoundException $e) {
             return $this->error('Chat not found', [], 404);
@@ -121,6 +123,13 @@ class WidgetChatMessagesController extends BaseController
                 if (!$conversation) {
                     EventEmitter::error('Chat not found.');
                     return;
+                }
+
+                if (is_numeric(request('aiAgentId'))) {
+                    AiAgentSession::pinAgentForConversation(
+                        $conversation,
+                        (int) request('aiAgentId'),
+                    );
                 }
 
                 (new HandleLatestUserMessage($conversation))->execute();

@@ -100,5 +100,6 @@ export function preparePayload(payload: CreateChatPayload) {
     flowId: payload.flowId,
     startWithGreeting: payload.startWithGreeting,
     department: bootstrap?.department ?? undefined,
+    aiAgentId: bootstrap?.aiAgentId ?? bootstrap?.aiAgent?.id ?? undefined,
   };
 }

@@ -2,6 +2,7 @@
 
 namespace Ai\AiAgent\Conversations;
 
+use Ai\AiAgent\Models\AiAgentSession;
 use App\Conversations\Models\Conversation;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -66,6 +67,7 @@ class AISoftSellManager
                     [
                         'conversation_id' => $this->conversation->id,
                         'group_id' => $this->conversation->group_id ? (int) $this->conversation->group_id : null,
+                        'ai_agent_id' => $this->pinnedAiAgentId(),
                         'agent_name' => $agentName,
                     ],
                 );
@@ -118,5 +120,20 @@ class AISoftSellManager
         }
 
         return trim($trimmed);
+    }
+
+    private function pinnedAiAgentId(): int|null
+    {
+        try {
+            $session = AiAgentSession::query()
+                ->where('conversation_id', $this->conversation->id)
+                ->first();
+            $context = is_array($session?->context ?? null) ? $session->context : [];
+            $agentId = $context['ai_agent_id'] ?? null;
+
+            return is_numeric($agentId) ? (int) $agentId : null;
+        } catch (\Throwable $_) {
+            return null;
+        }
     }
 }

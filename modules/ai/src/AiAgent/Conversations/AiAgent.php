@@ -5,6 +5,8 @@ namespace Ai\AiAgent\Conversations;
 use App\Conversations\Models\Conversation;
 use App\Conversations\Models\ConversationItem;
 use App\Conversations\Events\ConversationMessageCreated;
+use App\Billing\Services\AiBillingAccountResolver;
+use App\Billing\Services\AiReplyQuotaService;
 use Ai\AiAgent\Models\AiAgent as AiAgentRecord;
 use Ai\AiAgent\Models\AiAgentActivityLog;
 use Ai\AiAgent\Models\AiAgentFlow;
@@ -165,15 +167,10 @@ class AiAgent
                     $items = array_map(fn($b) => ['id' => $b['id'] ?? null, 'label' => $b['data']['name'] ?? $b['data']['label'] ?? null], $buttons);
                     $this->emitTypingIndicator();
 
-                    $payload = [
-                        'type' => 'message',
-                        'author' => Conversation::AUTHOR_BOT,
+                    $this->createBotMessagePayload([
                         'body' => $data['message'] ?? null,
                         'data' => ['buttons' => $items],
-                    ];
-                    $message = (new CreateConversationMessage())->execute($this->conversation, $payload);
-                    event(new ConversationMessageCreated($this->conversation, $message));
-                    EventEmitter::messageCreated($message->toArray());
+                    ]);
                     $nextNodeId = $this->getNextNodeId($node, $data);
                     break;
 
@@ -202,17 +199,15 @@ class AiAgent
                     $text = $data['message'] ?? 'Transferring you to an agent...';
                     $this->emitTypingIndicator();
 
-                    $message = (new CreateConversationMessage())->execute($this->conversation, [
-                        'type' => 'message',
-                        'author' => Conversation::AUTHOR_BOT,
+                    $message = $this->createBotMessagePayload([
                         'body' => $text,
                     ]);
-                    event(new ConversationMessageCreated($this->conversation, $message));
-                    EventEmitter::messageCreated($message->toArray());
 
-                    $this->conversation->assigned_to = Conversation::ASSIGNED_AGENT;
-                    $this->conversation->ai_agent_involved = false;
-                    $this->conversation->save();
+                    if ($message) {
+                        $this->conversation->assigned_to = Conversation::ASSIGNED_AGENT;
+                        $this->conversation->ai_agent_involved = false;
+                        $this->conversation->save();
+                    }
 
                     // attempt to assign to an available agent
                     try {
@@ -381,15 +376,31 @@ class AiAgent
 
     protected function createBotMessage(string $body): ?ConversationItem
     {
+        return $this->createBotMessagePayload(['body' => $body]);
+    }
+
+    protected function createBotMessagePayload(array $payload): ?ConversationItem
+    {
         try {
+            if (!$this->canConsumeAiReplyCredit()) {
+                Log::warning('AI reply quota reached; bot message blocked.', [
+                    'conversation_id' => $this->conversation->id,
+                ]);
+                return null;
+            }
+
             $this->emitTypingIndicator();
 
-            $message = ConversationItem::create([
-                'conversation_id' => $this->conversation->id,
-                'type' => 'message',
-                'author' => Conversation::AUTHOR_BOT,
-                'body' => $body,
-            ]);
+            $message = (new CreateConversationMessage())->execute(
+                $this->conversation,
+                array_merge(
+                    [
+                        'type' => 'message',
+                        'author' => Conversation::AUTHOR_BOT,
+                    ],
+                    $payload,
+                ),
+            );
 
             event(new ConversationMessageCreated($this->conversation, $message));
 
@@ -397,10 +408,49 @@ class AiAgent
                 EventEmitter::messageCreated($message->toArray());
             }
 
+            $this->recordAiReplyCredit($message);
+
             return $message;
         } catch (\Throwable $e) {
             Log::error('Failed to persist bot message: '.$e->getMessage());
             return null;
+        }
+    }
+
+    protected function canConsumeAiReplyCredit(): bool
+    {
+        if (! Schema::hasTable('ai_billing_accounts')) {
+            return true;
+        }
+
+        try {
+            $account = app(AiBillingAccountResolver::class)->resolve();
+            return app(AiReplyQuotaService::class)->canConsume($account);
+        } catch (\Throwable $e) {
+            Log::warning('AI billing quota check failed: '.$e->getMessage());
+            return true;
+        }
+    }
+
+    protected function recordAiReplyCredit(ConversationItem $message): void
+    {
+        if (! Schema::hasTable('ai_billing_accounts')) {
+            return;
+        }
+
+        try {
+            $groupId = $this->conversation->group_id ? (int) $this->conversation->group_id : null;
+            $agentName = (string) ($this->getAiAgentSetting('name') ?: 'AI assistant');
+            $agent = $this->resolveCurrentAiAgentRecord($groupId, $agentName);
+            $account = app(AiBillingAccountResolver::class)->resolve();
+
+            app(AiReplyQuotaService::class)->recordSuccessfulReply($account, [
+                'conversation_id' => $this->conversation->id,
+                'ai_agent_id' => $agent?->id,
+                'message_id' => $message->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record AI reply billing usage: '.$e->getMessage());
         }
     }
 
@@ -530,6 +580,7 @@ class AiAgent
             $groupId = $this->conversation->group_id ? (int) $this->conversation->group_id : null;
             $agentName = (string) ($this->getAiAgentSetting('name') ?: 'AI assistant');
             $agent = $this->resolveCurrentAiAgentRecord($groupId, $agentName);
+            $agentName = $agent?->name ?? $agentName;
 
             AiAgentActivityLog::create([
                 'group_id' => $groupId,
@@ -550,6 +601,31 @@ class AiAgent
 
     protected function resolveCurrentAiAgentRecord(?int $groupId, string $agentName): ?AiAgentRecord
     {
+        try {
+            $session = $this->conversation->aiAgentSession()->first();
+            $context = is_array($session?->context ?? null) ? $session->context : [];
+            $pinnedAgentId = $context['ai_agent_id'] ?? null;
+
+            if (is_numeric($pinnedAgentId)) {
+                $agent = AiAgentRecord::query()
+                    ->where('id', (int) $pinnedAgentId)
+                    ->where(function ($query) use ($groupId) {
+                        if ($groupId) {
+                            $query->whereNull('group_id')->orWhere('group_id', $groupId);
+                        } else {
+                            $query->whereNull('group_id');
+                        }
+                    })
+                    ->first();
+
+                if ($agent) {
+                    return $agent;
+                }
+            }
+        } catch (\Throwable $_) {
+            // Fall back to name-based resolution below.
+        }
+
         $query = AiAgentRecord::query()->where('name', $agentName);
 
         if ($groupId) {

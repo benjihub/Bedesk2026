@@ -1,2 +1,0 @@
-import{G as n,j as t}from"./client-Oxz8h_2h.js";const o=n(t.jsx("path",{d:"m16 6 2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"}),"TrendingUpOutlined"),s=n(t.jsx("path",{d:"m16 18 2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6h-6z"}),"TrendingDownOutlined"),a=n(t.jsx("path",{d:"m22 12-4-4v3H3v2h15v3l4-4z"}),"TrendingFlatOutlined");export{o as T,a,s as b};
-//# sourceMappingURL=TrendingFlat-C9rP1BYo.js.map

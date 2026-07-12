@@ -1,0 +1,2 @@
+import{i as n,k as r,q as s,l as o}from"./client-WIaOVJIS.js";import{o as u}from"./custom-menu-B5cJGuCi.js";function l(t,i){return n({mutationFn:e=>r.put(`helpdesk/groups/${t}/ai-agent-settings`,e).then(a=>a.data),onSuccess:async()=>{await s.invalidateQueries({queryKey:o.groupAiAgentSettings.invalidateKey(t)})},onError:e=>u(e,i)})}export{l as u};
+//# sourceMappingURL=use-update-group-ai-agent-settings-CWPJNd_H.js.map

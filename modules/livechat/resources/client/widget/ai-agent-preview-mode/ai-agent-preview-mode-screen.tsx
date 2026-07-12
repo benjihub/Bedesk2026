@@ -7,6 +7,7 @@ import {WidgetChatFeedContentItem} from '@livechat/widget/conversation-screen/fe
 import {WidgetChatGreeting} from '@livechat/widget/conversation-screen/feed/widget-chat-greeting';
 import {useChatMessageSubmitter} from '@livechat/widget/conversation-screen/requests/use-chat-message-submitter';
 import {useWidgetChatMessages} from '@livechat/widget/conversation-screen/requests/use-widget-chat-messages';
+import {getWidgetBootstrapData} from '@livechat/widget/hooks/use-widget-bootstrap-data';
 import {shouldHideReplyComposer} from '@livechat/widget/conversation-screen/utils/should-hide-reply-composer';
 import {WidgetChatTextEditor} from '@livechat/widget/conversation-screen/widget-chat-text-editor';
 import {widgetStore} from '@livechat/widget/widget-store';
@@ -24,6 +25,18 @@ export function AiAgentPreviewModeScreen() {
     if (!isBootStrapped.current) {
       addGlobalHeaderToApiClient('X-Chat-Widget', 'true');
       addGlobalHeaderToApiClient('X-Ai-Agent-Preview-Mode', 'true');
+      const bootstrap = getWidgetBootstrapData();
+      if (bootstrap?.visitorId) {
+        addGlobalHeaderToApiClient('X-Widget-Visitor', `${bootstrap.visitorId}`);
+      }
+      const widgetAuthToken = bootstrap?.widgetAuthToken ?? null;
+      if (widgetAuthToken) {
+        addGlobalHeaderToApiClient('X-Widget-Auth', widgetAuthToken);
+      }
+      const csrfToken = bootstrap?.csrf_token ?? bootstrap?.csrfToken ?? null;
+      if (csrfToken) {
+        addGlobalHeaderToApiClient('X-CSRF-TOKEN', csrfToken);
+      }
       widgetStore().setIsAiAgentPreviewMode(true);
       isBootStrapped.current = true;
 

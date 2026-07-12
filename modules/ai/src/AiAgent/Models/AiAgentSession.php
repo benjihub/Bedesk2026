@@ -56,4 +56,65 @@ class AiAgentSession extends Model
 
         return $session;
     }
+
+    public static function pinAgentForConversation(
+        Conversation $conversation,
+        int|null $agentId = null,
+    ): AiAgent|null {
+        $agent = static::resolveAgentForConversation($conversation, $agentId);
+
+        if (!$agent) {
+            return null;
+        }
+
+        $session = static::firstOrCreate(
+            ['conversation_id' => $conversation->id],
+            ['status' => self::STATUS_ACTIVE, 'context' => []],
+        );
+        $context = is_array($session->context ?? null) ? $session->context : [];
+        $context['ai_agent_id'] = $agent->id;
+        $context['ai_agent_name'] = $agent->name;
+        $session->context = $context;
+        $session->save();
+
+        return $agent;
+    }
+
+    public static function resolveAgentForConversation(
+        Conversation $conversation,
+        int|null $agentId = null,
+    ): AiAgent|null {
+        $groupId = $conversation->group_id ? (int) $conversation->group_id : null;
+
+        if ($agentId) {
+            return AiAgent::query()
+                ->where('id', $agentId)
+                ->where(function ($query) use ($groupId) {
+                    if ($groupId) {
+                        $query->whereNull('group_id')->orWhere('group_id', $groupId);
+                    } else {
+                        $query->whereNull('group_id');
+                    }
+                })
+                ->first();
+        }
+
+        $query = AiAgent::query()->where('enabled', true);
+
+        if ($groupId) {
+            $groupAgent = (clone $query)
+                ->where('group_id', $groupId)
+                ->orderBy('id')
+                ->first();
+
+            if ($groupAgent) {
+                return $groupAgent;
+            }
+        }
+
+        return $query
+            ->whereNull('group_id')
+            ->orderBy('id')
+            ->first();
+    }
 }

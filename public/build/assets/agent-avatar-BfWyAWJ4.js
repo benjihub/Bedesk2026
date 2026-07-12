@@ -1,2 +1,0 @@
-import{j as e,W as i}from"./client-Oxz8h_2h.js";import{u as n}from"./use-compact-agents-B8DJ2fdo.js";import{O as r}from"./online-status-circle-CuPNOA1b.js";function l({user:t,size:a,className:s}){return e.jsx(i,{label:t.name,src:t.image,fallback:"initials",circle:!0,size:a,className:s})}function u({showAwayIcon:t,...a}){const s=n(a.user.id);return e.jsxs("div",{className:"relative",children:[e.jsx(l,{...a}),e.jsx(r,{isOnline:s,showAwayIcon:t,className:"absolute -left-2 -top-2"})]})}export{u as A,l as a};
-//# sourceMappingURL=agent-avatar-BfWyAWJ4.js.map

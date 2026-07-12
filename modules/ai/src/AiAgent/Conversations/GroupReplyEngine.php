@@ -6,6 +6,8 @@ use Ai\AiAgent\Conversations\Streaming\EventEmitter;
 use Ai\AiAgent\Models\AiAgent as AiAgentRecord;
 use Ai\AiAgent\Models\AiAgentSession;
 use Ai\AiAgent\Models\UserConversationMemory;
+use App\Billing\Services\AiBillingAccountResolver;
+use App\Billing\Services\AiReplyQuotaService;
 use App\Conversations\Events\ConversationMessageCreated;
 use App\Conversations\Messages\CreateConversationMessage;
 use App\Conversations\Models\Conversation;
@@ -16,6 +18,7 @@ use App\Team\Models\GroupSettings;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class GroupReplyEngine
 {
@@ -999,6 +1002,13 @@ PROMPT;
             return;
         }
 
+        if (!$this->canConsumeAiReplyCredit()) {
+            Log::warning('AI reply quota reached; group reply blocked.', [
+                'conversation_id' => $this->conversation->id,
+            ]);
+            return;
+        }
+
         // No aggregation: reply to the latest message only
         $this->emitTypingIndicator();
         $replyObj = $this->buildGroupAwareReply($latest->body ?? '', null, (int) ($latest->id ?? 0));
@@ -1066,6 +1076,13 @@ PROMPT;
                     return;
                 }
 
+                if (!$this->canConsumeAiReplyCredit()) {
+                    Log::warning('AI reply quota reached; aggregated group reply blocked.', [
+                        'conversation_id' => $this->conversation->id,
+                    ]);
+                    return;
+                }
+
                 $this->emitTypingIndicator();
                 $replyObj = $this->buildGroupAwareReply($multiMessagePrompt, end($userTexts) ?: null, $startId);
                 $this->persistAndEmitReply($replyObj);
@@ -1079,6 +1096,13 @@ PROMPT;
                 $this->conversation->refresh();
             } catch (\Throwable $_) { /* ignore */ }
             if (($this->conversation->assigned_to ?? null) !== Conversation::ASSIGNED_BOT) {
+                return;
+            }
+
+            if (!$this->canConsumeAiReplyCredit()) {
+                Log::warning('AI reply quota reached; group reply blocked.', [
+                    'conversation_id' => $this->conversation->id,
+                ]);
                 return;
             }
 
@@ -1114,6 +1138,13 @@ PROMPT;
             return;
         }
 
+        if (!$this->canConsumeAiReplyCredit()) {
+            Log::warning('AI reply quota reached; group reply persistence blocked.', [
+                'conversation_id' => $this->conversation->id,
+            ]);
+            return;
+        }
+
         $replyText = (string) Arr::get($replyObj, 'reply', '');
         if ($replyText === '') {
             $replyText = '...';
@@ -1138,6 +1169,8 @@ PROMPT;
                 EventEmitter::messageCreated($message->toArray());
             }
 
+            $this->recordAiReplyCredit($message);
+
             // Update username+group CRM memory profile (summary, last issue,
             // and last interaction timestamp) based on the latest reply and
             // any available conversation-level summary.
@@ -1150,6 +1183,41 @@ PROMPT;
             $this->handoffManager->handoffToSupportIfNeeded($replyObj, $replyText);
         } catch (\Throwable $e) {
             Log::error('Failed to persist groupReply bot message: ' . $e->getMessage());
+        }
+    }
+
+    private function canConsumeAiReplyCredit(): bool
+    {
+        if (!Schema::hasTable('ai_billing_accounts')) {
+            return true;
+        }
+
+        try {
+            $account = app(AiBillingAccountResolver::class)->resolve();
+            return app(AiReplyQuotaService::class)->canConsume($account);
+        } catch (\Throwable $e) {
+            Log::warning('AI billing quota check failed: '.$e->getMessage());
+            return true;
+        }
+    }
+
+    private function recordAiReplyCredit(ConversationItem $message): void
+    {
+        if (!Schema::hasTable('ai_billing_accounts')) {
+            return;
+        }
+
+        try {
+            $account = app(AiBillingAccountResolver::class)->resolve();
+            $context = $this->activityLogContext();
+
+            app(AiReplyQuotaService::class)->recordSuccessfulReply($account, [
+                'conversation_id' => $this->conversation->id,
+                'ai_agent_id' => $context['ai_agent_id'] ?? null,
+                'message_id' => $message->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record AI reply billing usage: '.$e->getMessage());
         }
     }
 
@@ -2635,6 +2703,31 @@ PROMPT;
 
     private function resolveAiAgentRecordForActivity(?int $groupId): ?AiAgentRecord
     {
+        try {
+            $session = $this->conversation->aiAgentSession()->first();
+            $context = is_array($session?->context ?? null) ? $session->context : [];
+            $pinnedAgentId = $context['ai_agent_id'] ?? null;
+
+            if (is_numeric($pinnedAgentId)) {
+                $agent = AiAgentRecord::query()
+                    ->where('id', (int) $pinnedAgentId)
+                    ->where(function ($query) use ($groupId) {
+                        if ($groupId) {
+                            $query->whereNull('group_id')->orWhere('group_id', $groupId);
+                        } else {
+                            $query->whereNull('group_id');
+                        }
+                    })
+                    ->first();
+
+                if ($agent) {
+                    return $agent;
+                }
+            }
+        } catch (\Throwable $_) {
+            // Fall back to group/default resolution below.
+        }
+
         $query = AiAgentRecord::query()->where('enabled', true);
 
         if ($groupId) {

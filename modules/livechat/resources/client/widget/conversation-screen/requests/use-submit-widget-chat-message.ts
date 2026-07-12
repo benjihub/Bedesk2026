@@ -6,6 +6,7 @@ import {queryClient} from '@common/http/query-client';
 import {showHttpErrorToast} from '@common/http/show-http-error-toast';
 import {aiAgentStreamIterator} from '@livechat/widget/chat/ai-agent/ai-agent-stream-iterator';
 import {updateMessagesQueryData} from '@livechat/widget/conversation-screen/requests/update-messages-query-data';
+import {getWidgetBootstrapData} from '@livechat/widget/hooks/use-widget-bootstrap-data';
 import {widgetQueries} from '@livechat/widget/widget-queries';
 import {useMutation} from '@tanstack/react-query';
 
@@ -20,6 +21,7 @@ export interface SubmitChatMessagePayload {
     body: string;
     attachments?: {id: number}[];
   };
+  aiAgentId?: number | null;
 }
 
 export const submitWidgetChatMessageKey = ['submit-widget-chat-message'];
@@ -29,6 +31,7 @@ export function useSubmitWidgetChatMessage() {
     mutationKey: submitWidgetChatMessageKey,
     mutationFn: ({message, conversationId}: SubmitChatMessagePayload) => {
       const abortController = new AbortController();
+      const bootstrap = getWidgetBootstrapData();
       return makeStreamedFetchRequest(
         `lc/widget/chats/${conversationId}/messages`,
         {
@@ -36,6 +39,7 @@ export function useSubmitWidgetChatMessage() {
             ...message,
             attachments: message.attachments?.map(f => f.id),
           },
+          aiAgentId: bootstrap?.aiAgentId ?? bootstrap?.aiAgent?.id ?? undefined,
         },
         abortController.signal,
       ).then(async r => {

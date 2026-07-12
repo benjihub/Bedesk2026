@@ -1,5 +1,6 @@
 <?php
 
+use App\Billing\Commands\RunAiBillingMaintenanceCommand;
 use App\Conversations\Commands\DeleteTestConversationsCommand;
 use App\Conversations\Email\Commands\ImportEmailsViaImap;
 use App\Conversations\Email\Commands\RefreshGmailSubscription;
@@ -32,3 +33,6 @@ if (settings('incoming_email.gmail.enabled')) {
 Schedule::command(DeleteTestConversationsCommand::class)
     ->hourly();
 
+Schedule::command(RunAiBillingMaintenanceCommand::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

@@ -2,6 +2,7 @@
 
 use App\Attributes\Controllers\AttributesController;
 use App\Attributes\Controllers\AttributesListController;
+use App\Billing\Controllers\AiBillingController;
 use App\CannedReplies\Controllers\CannedRepliesController;
 use App\Contacts\Controllers\CustomerProfileController;
 use App\Contacts\Controllers\CustomersController;
@@ -142,6 +143,21 @@ Route::group(['prefix' => 'v1'], function() {
         Route::get('helpdesk/promotions', [PromotionsController::class, 'index']);
         // DASHBOARD STATS
         Route::get('helpdesk/dashboard-stats', [\App\Team\Controllers\DashboardStatsController::class, 'index']);
+
+        // BILLING
+        Route::get('helpdesk/billing/summary', [AiBillingController::class, 'summary']);
+        Route::get('helpdesk/billing/plans', [AiBillingController::class, 'plans']);
+        Route::get('helpdesk/billing/payment-history', [AiBillingController::class, 'paymentHistory']);
+        Route::post('helpdesk/billing/request-plan', [AiBillingController::class, 'requestPlan']);
+        Route::post('helpdesk/billing/request-top-up', [AiBillingController::class, 'requestTopUp']);
+        Route::post('helpdesk/billing/payment-requests/{paymentRequestId}/transaction', [AiBillingController::class, 'submitTransaction']);
+        Route::post('helpdesk/billing/payment-requests/{paymentRequestId}/cancel', [AiBillingController::class, 'cancelPaymentRequest']);
+        Route::get('helpdesk/admin/billing/accounts', [AiBillingController::class, 'adminAccounts']);
+        Route::get('helpdesk/admin/billing/accounts/{accountId}', [AiBillingController::class, 'adminAccountSummary']);
+        Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/confirm', [AiBillingController::class, 'confirmPayment']);
+        Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/reject', [AiBillingController::class, 'rejectPayment']);
+        Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/reconcile', [AiBillingController::class, 'reconcilePayment']);
+        Route::post('helpdesk/admin/billing/top-ups/{topUpId}/expire', [AiBillingController::class, 'expireTopUp']);
 
         // AGENT INVITES
         Route::get('helpdesk/agents/invites', [AgentInvitesController::class, 'index']);

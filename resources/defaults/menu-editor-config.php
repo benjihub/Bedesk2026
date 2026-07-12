@@ -51,6 +51,7 @@ return [
         '/admin/attributes',
         '/admin/team/agents',
         '/admin/customers',
+        '/admin/billing',
         '/admin/campaigns',
         '/admin/views',
         '/admin/statuses',

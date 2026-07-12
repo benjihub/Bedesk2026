@@ -39,6 +39,9 @@ class WidgetBootstrapData extends BaseBootstrapData
             : null;
         $department = request('department') ? request('department') : null;
         $visitorId = request('visitorId') ?: null;
+        $aiAgentId = is_numeric(request('aiAgentId'))
+            ? (int) request('aiAgentId')
+            : null;
 
         // Use the same guard as widget API (chatWidget) so the customer
         // that owns conversations is the one we use to resolve
@@ -79,7 +82,7 @@ class WidgetBootstrapData extends BaseBootstrapData
             }
         }
 
-        $aiAgent = $this->resolveAiAgentForGroup($group?->id ?? null);
+        $aiAgent = $this->resolveAiAgentForGroup($group?->id ?? null, $aiAgentId);
 
         $this->data = [
             'themes' => $this->getThemes(),
@@ -92,6 +95,7 @@ class WidgetBootstrapData extends BaseBootstrapData
                     'image' => $aiAgent->image,
                 ]
                 : null,
+            'aiAgentId' => $aiAgent?->id,
             'visitorId' => $visitorId,
             'guest_role' => app('guestRole')?->load('permissions'),
             'settings' => $settings,
@@ -118,8 +122,28 @@ class WidgetBootstrapData extends BaseBootstrapData
         }
     }
 
-    protected function resolveAiAgentForGroup(int|null $groupId): AiAgent|null
+    protected function resolveAiAgentForGroup(
+        int|null $groupId,
+        int|null $aiAgentId = null,
+    ): AiAgent|null
     {
+        if ($aiAgentId) {
+            $agent = AiAgent::query()
+                ->where('id', $aiAgentId)
+                ->where(function ($query) use ($groupId) {
+                    if ($groupId) {
+                        $query->whereNull('group_id')->orWhere('group_id', $groupId);
+                    } else {
+                        $query->whereNull('group_id');
+                    }
+                })
+                ->first();
+
+            if ($agent) {
+                return $agent;
+            }
+        }
+
         $query = AiAgent::query()->where('enabled', true);
 
         if ($groupId) {

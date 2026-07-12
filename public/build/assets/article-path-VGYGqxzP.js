@@ -1,0 +1,2 @@
+import{j as t}from"./client-WIaOVJIS.js";import{C as n}from"./category-link-BIJhebRi.js";function f({path:r,className:s,noLinks:i}){if(!r||!r.length)return null;let e,o;r[0]&&(e=i?r[0].name:t.jsx(n,{category:r[0]})),r[1]&&(o=i?r[1].name:t.jsx(n,{category:r[1]}));const c=!!e&&!!o;return t.jsxs("div",{className:s,children:[e," ",c&&"/"," ",o]})}export{f as A};
+//# sourceMappingURL=article-path-VGYGqxzP.js.map

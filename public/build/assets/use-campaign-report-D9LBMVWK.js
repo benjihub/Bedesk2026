@@ -1,0 +1,2 @@
+import{n,K as o,k as i}from"./client-WIaOVJIS.js";import{u as p}from"./use-required-params-DbsZfYVz.js";function c(t,r){const{campaignId:e}=p(["campaignId"]),a={startDate:t.start.toAbsoluteString(),endDate:t.end.toAbsoluteString(),timezone:t.start.timeZone,country:r};return n({queryKey:["campaigns",`${e}`,"report",a],placeholderData:o,queryFn:()=>i.get(`lc/campaigns/${e}/report`,{params:a}).then(s=>s.data)})}export{c as u};
+//# sourceMappingURL=use-campaign-report-D9LBMVWK.js.map

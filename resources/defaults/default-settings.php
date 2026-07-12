@@ -123,6 +123,13 @@ return [
                         'permissions' => ['ai_agent.update'],
                     ],
                     [
+                        'label' => 'Billing',
+                        'action' => '/admin/billing',
+                        'type' => 'route',
+                        'id' => 'billadm1',
+                        'permissions' => ['admin'],
+                    ],
+                    [
                         'label' => 'Tags',
                         'action' => '/admin/tags',
                         'type' => 'route',
@@ -227,6 +234,13 @@ return [
                         'type' => 'route',
                         'id' => 'aidas1',
                         'permissions' => ['ai_agent.settings.update'],
+                    ],
+                    [
+                        'label' => 'Billing',
+                        'action' => '/dashboard/billing',
+                        'type' => 'route',
+                        'id' => 'billdash1',
+                        'permissions' => ['admin'],
                     ],
                 ],
             ],

@@ -24,6 +24,7 @@ export const AdminSidebarIcons = {
   '/admin/attributes': TextFieldsIcon,
   '/admin/triggers': AltRouteIcon,
   '/admin/ai-agent': dashboardIcons.aiAgent,
+  '/admin/billing': dashboardIcons.billing,
   '/admin/campaigns': dashboardIcons.campaigns,
   '/admin/team': dashboardIcons.team,
   '/admin/views': dashboardIcons.views,

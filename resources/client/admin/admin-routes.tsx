@@ -50,6 +50,11 @@ export const adminRoutes: RouteObject[] = [
       ...Object.values(adminFileEntriesRoutes),
       ...Object.values(adminLogsRoutes),
 
+      {
+        path: 'billing',
+        lazy: () => import('@app/admin/billing/admin-billing-page'),
+      },
+
       commonAdminSettingsRoutes(
         [
           {
@@ -59,9 +64,7 @@ export const adminRoutes: RouteObject[] = [
           {
             path: 'search',
             lazy: () =>
-              import(
-                '@common/admin/settings/pages/search-settings/search-settings'
-              ),
+              import('@common/admin/settings/pages/search-settings/search-settings'),
           },
           {
             path: 'hc',
@@ -70,9 +73,7 @@ export const adminRoutes: RouteObject[] = [
           {
             path: 'email/incoming',
             lazy: () =>
-              import(
-                '@common/admin/settings/pages/email-settings/incoming-email/incoming-email-settings'
-              ),
+              import('@common/admin/settings/pages/email-settings/incoming-email/incoming-email-settings'),
           },
           {
             path: 'livechat',
@@ -89,9 +90,7 @@ export const adminRoutes: RouteObject[] = [
           },
           system: {
             lazy: () =>
-              import(
-                '@common/admin/settings/pages/system-settings/system-settings'
-              ),
+              import('@common/admin/settings/pages/system-settings/system-settings'),
           },
         },
       ),

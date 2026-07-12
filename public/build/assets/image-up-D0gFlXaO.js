@@ -1,2 +1,0 @@
-import{r as c,j as a,an as p}from"./client-Oxz8h_2h.js";const x=c.forwardRef((r,s)=>a.jsxs(p,{...r,ref:s,children:[a.jsx("path",{d:"M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"}),a.jsx("path",{d:"m14 19.5 3-3 3 3"}),a.jsx("path",{d:"M17 22v-5.5"}),a.jsx("circle",{cx:"9",cy:"9",r:"2"})]}));export{x as I};
-//# sourceMappingURL=image-up-D0gFlXaO.js.map

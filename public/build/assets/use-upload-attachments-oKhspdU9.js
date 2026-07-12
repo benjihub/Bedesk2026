@@ -1,2 +1,0 @@
-import{r as s,aR as u,t as n}from"./client-Oxz8h_2h.js";import{u as l}from"./file-upload-provider-CLNKsu48.js";function i({onSuccess:e}){const r=s.useRef(e);r.current=e;const a=l(o=>o.uploadMultiple);return s.useCallback(o=>{a(o,{showToastOnRestrictionFail:!0,uploadType:u.conversationAttachments,onSuccess:t=>{r.current(t)},onError:t=>{t&&n.danger(t)}})},[a])}export{i as u};
-//# sourceMappingURL=use-upload-attachments-oKhspdU9.js.map

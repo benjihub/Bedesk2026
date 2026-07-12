@@ -2,6 +2,8 @@
 
 use App\Attributes\Models\CustomAttribute;
 use App\Attributes\Policies\AttributePolicy;
+use App\Billing\Commands\RunAiBillingMaintenanceCommand;
+use App\Billing\Listeners\RecordAiReplyBillingUsage;
 use App\CannedReplies\Models\CannedReply;
 use App\CannedReplies\Policies\CannedReplyPolicy;
 use App\Contacts\Models\PageVisit;
@@ -153,6 +155,7 @@ class AppServiceProvider extends ServiceProvider
             ResetDemoSiteCommand::class,
             ImportEmailsViaImap::class,
             DeleteTestConversationsCommand::class,
+            RunAiBillingMaintenanceCommand::class,
         ]);
 
         $this->app->booted(function () {
@@ -219,6 +222,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(
             ConversationMessageCreated::class,
             LogTicketFirstReply::class,
+        );
+        Event::listen(
+            ConversationMessageCreated::class,
+            RecordAiReplyBillingUsage::class,
         );
         // Bank proof extraction on image messages
         Event::listen(

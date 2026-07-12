@@ -62,6 +62,18 @@ export function PreviewSidebar({
   if (activeGroupId) {
     src += `${src.includes('?') ? '&' : '?'}department=${encodeURIComponent(activeGroupId)}`;
   }
+  const activeAiAgentId = searchParams.get('aiAgentId');
+  if (activeAiAgentId) {
+    src += `${src.includes('?') ? '&' : '?'}aiAgentId=${encodeURIComponent(activeAiAgentId)}`;
+  }
+  if (activeAiAgentId) {
+    const previewVisitorId = [
+      'ai-agent-preview',
+      activeGroupId || 'global',
+      activeAiAgentId,
+    ].join('-');
+    src += `${src.includes('?') ? '&' : '?'}visitorId=${encodeURIComponent(previewVisitorId)}`;
+  }
 
   useEffect(() => {
     setIsLoading(true);
@@ -113,7 +125,7 @@ export function PreviewSidebar({
           <Trans message="Preview" />
         </DatatablePageHeaderBar>
         <div className="relative flex-auto">
-          <iframe ref={iframeRef} src={src} className="h-full w-full" />
+          <iframe key={src} ref={iframeRef} src={src} className="h-full w-full" />
           {resetConversationMessage ? (
             <div className="absolute bottom-86 left-0 right-0 mx-20 bg">
               {resetConversationMessage(handleResetConversation)}

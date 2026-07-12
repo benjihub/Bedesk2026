@@ -102,6 +102,13 @@ class CreateChatAsCustomer
                     : $this->handleBasicGreeting($conversation, $newChatGreeting);
             }
 
+            AiAgentSession::pinAgentForConversation(
+                $conversation,
+                is_numeric(Arr::get($data, 'aiAgentId'))
+                    ? (int) Arr::get($data, 'aiAgentId')
+                    : null,
+            );
+
             if (isset($data['message'])) {
                 $data['message']['author'] = Conversation::AUTHOR_USER;
                 (new CreateConversationMessage())->execute(

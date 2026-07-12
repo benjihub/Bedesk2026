@@ -64,6 +64,7 @@ class WidgetConversationsController extends BaseController
                 'flowId' => request('flowId'),
                 'startWithGreeting' => request('startWithGreeting'),
                 'department' => request('department'),
+                'aiAgentId' => request('aiAgentId'),
             ];
         } else {
             $data = request()->validate([
@@ -74,6 +75,7 @@ class WidgetConversationsController extends BaseController
                 'flowId' => 'int|nullable',
                 'startWithGreeting' => 'bool',
                 'department' => 'nullable',
+                'aiAgentId' => 'int|nullable|exists:ai_agents,id',
             ]);
         }
 
@@ -121,6 +123,12 @@ class WidgetConversationsController extends BaseController
             }
 
             $conversation = $existing->refresh();
+            \Ai\AiAgent\Models\AiAgentSession::pinAgentForConversation(
+                $conversation,
+                is_numeric($data['aiAgentId'] ?? null)
+                    ? (int) $data['aiAgentId']
+                    : null,
+            );
         } else {
             try {
                 $conversation = (new CreateChatAsCustomer())->execute($data);

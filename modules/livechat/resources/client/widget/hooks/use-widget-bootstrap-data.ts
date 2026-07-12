@@ -14,6 +14,7 @@ export interface WidgetBootstrapData {
     name: string;
     image: string | null;
   } | null;
+  aiAgentId?: number | null;
   scopedHcCategoryId?: number;
   department?: string | null;
   visitorId?: string | null;

@@ -14,6 +14,7 @@ import {DashboardSidenavChildrenProps} from '@common/ui/dashboard-layout/dashboa
 import {Badge} from '@ui/badge/badge';
 import {Trans} from '@ui/i18n/trans';
 import {NotificationsIcon} from '@ui/icons/material/Notifications';
+import {PaymentsIcon} from '@ui/icons/material/Payments';
 import {SettingsIcon} from '@ui/icons/material/Settings';
 import {DialogTrigger} from '@ui/overlays/dialog/dialog-trigger';
 import {Fragment, useCallback} from 'react';
@@ -32,14 +33,14 @@ const defaultIcons = {
   '/dashboard/hc/arrange': dashboardIcons.library,
   '/dashboard/customers': dashboardIcons.users,
   '/dashboard/saved-replies': dashboardIcons.saveReplies,
-  '/dashboard/billing': dashboardIcons.billing,
+  '/dashboard/billing': dashboardIcons.billing || PaymentsIcon,
 };
 
 export function HelpdeskDashboardSidebar(props: DashboardSidenavChildrenProps) {
   const {isCompactMode = false} = props;
   const {hasPermission} = useAuth();
   const isOwner = hasPermission('admin') || hasPermission('superAdmin');
-  const BillingIcon = dashboardIcons.billing;
+  const BillingIcon = dashboardIcons.billing || PaymentsIcon;
 
   const customMenuRender = useCallback(
     (item: MenuItemConfig, menuItemProps: MenuItemProps) => (

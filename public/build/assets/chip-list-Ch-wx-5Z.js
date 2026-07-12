@@ -1,0 +1,2 @@
+import{j as x,r as e,o as p}from"./client-WIaOVJIS.js";function f({className:s,children:t,size:a,color:i,radius:n,selectable:l,wrap:m=!0,startButton:o}){return x.jsxs("div",{className:p("flex items-center gap-8",m&&"flex-wrap",s),children:[o,e.Children.map(t,r=>{if(e.isValidElement(r))return e.cloneElement(r,{size:a,color:i,selectable:l,radius:n})})]})}export{f as C};
+//# sourceMappingURL=chip-list-Ch-wx-5Z.js.map
