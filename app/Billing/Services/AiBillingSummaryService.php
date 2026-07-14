@@ -147,9 +147,46 @@ class AiBillingSummaryService
                 'paymentId' => $request->provider_payment_id,
                 'prepayId' => $request->provider_prepay_id,
                 'status' => $request->provider_status,
-                'invoiceUrl' => $request->provider_invoice_url,
-                'checkoutUrl' => $request->provider_checkout_url,
+                'invoiceUrl' => $this->providerCheckoutUrl($request),
+                'checkoutUrl' => $this->providerCheckoutUrl($request),
                 'qrCodeUrl' => $this->qrCodeUrl($request),
+                'debug' => [
+                    'rawStatus' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.rawStatus',
+                    ),
+                    'message' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.message',
+                    ),
+                    'paymentId' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.paymentId',
+                    ),
+                    'invoiceId' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.invoiceId',
+                    ),
+                    'priceAmount' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.payload.price_amount',
+                    ) ?: data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.payload.payments.0.price_amount',
+                    ),
+                    'priceCurrency' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.payload.price_currency',
+                    ) ?: data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.payload.payments.0.price_currency',
+                    ),
+                    'lookupAttempts' => data_get(
+                        $request->provider_payload,
+                        'nowPaymentsVerification.payload.nowPaymentsLookup.attempts',
+                        [],
+                    ),
+                ],
             ],
         ];
     }
@@ -186,9 +223,36 @@ class AiBillingSummaryService
             ?: Arr::get($payload, 'data.qrCodeUrl')
             ?: Arr::get($payload, 'data.qrcodeUrl')
             ?: Arr::get($payload, 'data.qrContent')
+            ?: Arr::get($payload, 'nowPaymentsInvoice.qrcodeLink')
+            ?: Arr::get($payload, 'nowPaymentsInvoice.qrCodeUrl')
+            ?: Arr::get($payload, 'nowPaymentsInvoice.qrcodeUrl')
+            ?: Arr::get($payload, 'nowPaymentsVerification.qrcodeLink')
+            ?: Arr::get($payload, 'nowPaymentsVerification.qrCodeUrl')
+            ?: Arr::get($payload, 'nowPaymentsVerification.qrcodeUrl')
             ?: Arr::get($payload, 'qrcodeLink')
             ?: Arr::get($payload, 'qrCodeUrl')
             ?: Arr::get($payload, 'qrcodeUrl');
+    }
+
+    private function providerCheckoutUrl(
+        AiBillingPaymentRequest $request,
+    ): ?string {
+        if ($request->provider_checkout_url || $request->provider_invoice_url) {
+            return $request->provider_checkout_url ?: $request->provider_invoice_url;
+        }
+
+        if ($request->provider === 'nowpayments' && $request->provider_prepay_id) {
+            return str_replace(
+                '{id}',
+                rawurlencode((string) $request->provider_prepay_id),
+                config(
+                    'ai-billing.nowpayments.checkout_url_template',
+                    'https://nowpayments.io/payment/?iid={id}',
+                ),
+            );
+        }
+
+        return null;
     }
 
     private function selfCustodyQrCodeUrl(

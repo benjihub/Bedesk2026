@@ -73,6 +73,21 @@ export interface PaymentRequest {
     invoiceUrl: string | null;
     checkoutUrl: string | null;
     qrCodeUrl: string | null;
+    debug?: {
+      rawStatus: string | null;
+      message: string | null;
+      paymentId: string | null;
+      invoiceId: string | null;
+      priceAmount: string | null;
+      priceCurrency: string | null;
+      lookupAttempts?: {
+        path: string;
+        success: boolean;
+        httpStatus?: number | null;
+        error?: string | null;
+        body?: string | null;
+      }[];
+    };
   };
 }
 
@@ -154,25 +169,20 @@ export function requestTopUp() {
     .then(response => response.data);
 }
 
-export function submitBillingPaymentTransaction(
-  paymentRequestId: number,
-  transactionHash: string,
-) {
-  return apiClient
-    .post<{
-      paymentRequest: PaymentRequest;
-      billing: BillingSummary;
-    }>(`helpdesk/billing/payment-requests/${paymentRequestId}/transaction`, {
-      transactionHash,
-    })
-    .then(response => response.data);
-}
-
 export function cancelBillingPaymentRequest(paymentRequestId: number) {
   return apiClient
     .post<{
       paymentRequest: PaymentRequest;
       billing: BillingSummary;
     }>(`helpdesk/billing/payment-requests/${paymentRequestId}/cancel`, {})
+    .then(response => response.data);
+}
+
+export function reconcileBillingPaymentRequest(paymentRequestId: number) {
+  return apiClient
+    .post<{
+      paymentRequest: PaymentRequest;
+      billing: BillingSummary;
+    }>(`helpdesk/billing/payment-requests/${paymentRequestId}/reconcile`, {})
     .then(response => response.data);
 }

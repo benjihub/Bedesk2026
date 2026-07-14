@@ -9,6 +9,76 @@ class TronSelfCustodyPaymentService
 {
     private const TRANSFER_METHOD_ID = 'a9059cbb';
 
+    public function findPayment(AiBillingPaymentRequest $paymentRequest): array
+    {
+        if (!$paymentRequest->wallet_address) {
+            return $this->result(false, 'wallet_not_configured', 'Billing wallet address is not configured.');
+        }
+
+        try {
+            $transfers = $this->incomingTrc20Transfers($paymentRequest);
+        } catch (Throwable $e) {
+            return $this->result(false, 'scan_failed', $e->getMessage());
+        }
+
+        $decimals = (int) config('ai-billing.tron.usdt_decimals', 6);
+        $expectedUnits = $this->decimalToUnits(
+            (string) $paymentRequest->expected_crypto_amount,
+            $decimals,
+        );
+
+        foreach ($transfers as $transfer) {
+            $hash = (string) (
+                Arr::get($transfer, 'transaction_id')
+                ?: Arr::get($transfer, 'transactionId')
+                ?: Arr::get($transfer, 'txID')
+            );
+            $amountUnits = (string) Arr::get($transfer, 'value', '');
+
+            if (!$hash || !$amountUnits) {
+                continue;
+            }
+
+            if ($this->transactionHashIsReusedHash($hash, $paymentRequest->id)) {
+                continue;
+            }
+
+            if (!$this->transferTimeMatchesRequest($paymentRequest, $transfer)) {
+                continue;
+            }
+
+            if (!$this->transferRecipientMatchesWallet($paymentRequest, $transfer)) {
+                continue;
+            }
+
+            if (!$this->transferTokenMatchesUsdt($transfer)) {
+                continue;
+            }
+
+            if ($this->compareIntegerStrings($amountUnits, $expectedUnits) !== 0) {
+                continue;
+            }
+
+            return $this->result(
+                true,
+                'verified',
+                'TRON payment automatically detected and verified.',
+                $transfer,
+                [
+                    'receivedAmount' => $this->unitsToDecimal($amountUnits, $decimals),
+                    'transactionHash' => $hash,
+                ],
+            );
+        }
+
+        return $this->result(
+            false,
+            'awaiting_payment',
+            'No matching TRC20 payment has been detected yet.',
+            ['checkedTransfers' => count($transfers)],
+        );
+    }
+
     public function verify(AiBillingPaymentRequest $paymentRequest): array
     {
         $hash = trim((string) $paymentRequest->transaction_hash);
@@ -17,7 +87,7 @@ class TronSelfCustodyPaymentService
             return $this->result(false, 'awaiting_transaction', 'Transaction hash is missing.');
         }
 
-        if ($this->transactionHashIsReused($paymentRequest)) {
+        if ($this->transactionHashIsReusedHash($hash, $paymentRequest->id)) {
             return $this->result(false, 'duplicate_transaction', 'This transaction hash is already linked to another payment.');
         }
 
@@ -168,16 +238,111 @@ class TronSelfCustodyPaymentService
         return true;
     }
 
-    private function transactionHashIsReused(
-        AiBillingPaymentRequest $paymentRequest,
+    private function transactionHashIsReusedHash(
+        string $transactionHash,
+        int $paymentRequestId,
     ): bool {
         return AiBillingPaymentRequest::where(
             'transaction_hash',
-            $paymentRequest->transaction_hash,
+            $transactionHash,
         )
-            ->where('id', '!=', $paymentRequest->id)
+            ->where('id', '!=', $paymentRequestId)
             ->whereIn('status', ['pending', 'paid'])
             ->exists();
+    }
+
+    private function incomingTrc20Transfers(
+        AiBillingPaymentRequest $paymentRequest,
+    ): array {
+        $params = [
+            'limit' => (int) config('ai-billing.tron.scan_limit', 200),
+            'only_to' => 'true',
+            'contract_address' => config('ai-billing.tron.usdt_contract'),
+            'order_by' => 'block_timestamp,desc',
+        ];
+
+        if ($paymentRequest->created_at) {
+            $params['min_timestamp'] = $paymentRequest->created_at->getTimestamp() * 1000;
+        }
+
+        if ($paymentRequest->expires_at) {
+            $params['max_timestamp'] = $paymentRequest->expires_at->getTimestamp() * 1000;
+        }
+
+        $response = $this->get(
+            sprintf(
+                '/v1/accounts/%s/transactions/trc20',
+                rawurlencode((string) $paymentRequest->wallet_address),
+            ),
+            $params,
+        );
+
+        return Arr::get($response, 'data', []);
+    }
+
+    private function transferTimeMatchesRequest(
+        AiBillingPaymentRequest $paymentRequest,
+        array $transfer,
+    ): bool {
+        $timestamp = (int) Arr::get($transfer, 'block_timestamp');
+
+        if (!$timestamp) {
+            return true;
+        }
+
+        $transferTime = (int) floor($timestamp / 1000);
+        $createdAt = $paymentRequest->created_at?->getTimestamp();
+        $expiresAt = $paymentRequest->expires_at?->getTimestamp();
+
+        if ($createdAt && $transferTime < $createdAt) {
+            return false;
+        }
+
+        if ($expiresAt && $transferTime > $expiresAt) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function transferRecipientMatchesWallet(
+        AiBillingPaymentRequest $paymentRequest,
+        array $transfer,
+    ): bool {
+        $recipient = (string) Arr::get($transfer, 'to');
+
+        if (!$recipient) {
+            return false;
+        }
+
+        return $this->addressesMatch(
+            $recipient,
+            (string) $paymentRequest->wallet_address,
+        );
+    }
+
+    private function transferTokenMatchesUsdt(array $transfer): bool
+    {
+        $contract = (string) Arr::get($transfer, 'token_info.address');
+
+        if (!$contract) {
+            return true;
+        }
+
+        return $this->addressesMatch(
+            $contract,
+            (string) config('ai-billing.tron.usdt_contract'),
+        );
+    }
+
+    private function addressesMatch(string $left, string $right): bool
+    {
+        try {
+            return strtoupper($this->addressToHex($left)) ===
+                strtoupper($this->addressToHex($right));
+        } catch (Throwable) {
+            return strtolower(trim($left)) === strtolower(trim($right));
+        }
     }
 
     private function post(string $path, array $body): array
@@ -197,6 +362,28 @@ class TronSelfCustodyPaymentService
         $response = $client->post($path, [
             'headers' => $headers,
             'json' => $body,
+        ]);
+
+        return json_decode((string) $response->getBody(), true) ?: [];
+    }
+
+    private function get(string $path, array $query = []): array
+    {
+        $headers = ['Accept' => 'application/json'];
+        $apiKey = config('ai-billing.tron.api_key');
+
+        if ($apiKey) {
+            $headers['TRON-PRO-API-KEY'] = $apiKey;
+        }
+
+        $client = new Client([
+            'base_uri' => rtrim(config('ai-billing.tron.api_base_url'), '/'),
+            'timeout' => 30,
+        ]);
+
+        $response = $client->get($path, [
+            'headers' => $headers,
+            'query' => $query,
         ]);
 
         return json_decode((string) $response->getBody(), true) ?: [];

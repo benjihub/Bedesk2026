@@ -134,53 +134,54 @@ Recommended messages:
 
 ### Crypto Payment Flow
 
-V1 will use a self-custody USDT TRC20 payment watcher for plan upgrades, monthly plan payments, and top-up purchases.
+V1 will use NOWPayments checkout for plan upgrades, monthly plan payments, and top-up purchases.
 
-The implementation creates an internal payment request, shows the configured USDT TRC20 wallet address and QR code, accepts a customer-submitted TRON transaction hash, and verifies the transaction against the TRON API. Plans and top-ups activate only after the backend verifies the transaction.
+The implementation creates an internal payment request, creates a NOWPayments invoice, sends the customer to the NOWPayments checkout page, and activates the plan/top-up only after a verified NOWPayments IPN/webhook or provider status refresh confirms the payment.
 
 Agreed behavior:
 
 - Customers do not upload payment proof inside the app.
 - The customer can request a plan or top-up.
 - The system creates an internal pending crypto payment request.
-- All crypto payments must use the TRC/TRC20 network.
-- IDR plan/top-up prices are converted to crypto at request time using a configurable exchange-rate API.
+- NOWPayments handles the payable wallet address, QR code, crypto amount, network instructions, and chain monitoring.
+- The configured NOWPayments pay currency is `USDTTRC20`.
 - Payment requests stay valid for 24 hours.
-- After submitting the request, customers see the wallet address, amount, TRC20 label, and QR code.
-- Customer pays USDT TRC20 from their wallet/exchange.
-- Customer submits the TRON transaction hash in the billing page.
-- Backend verifies the transaction on TRON.
-- Once the transaction is confirmed as a valid USDT TRC20 transfer to our wallet for enough amount, the system activates the plan or adds top-up credits automatically.
+- After submitting the request, customers see a Pay Now button that opens NOWPayments checkout.
+- Customer pays through NOWPayments checkout.
+- Customer does not submit a transaction hash in the app.
+- Backend verifies the NOWPayments IPN signature before trusting webhook data.
+- Backend checks the provider payment reference, amount, and currency before activation.
+- Once NOWPayments reports a successful final status, the system activates the plan or adds top-up credits automatically.
 
 Planned flow:
 
 1. Customer/account admin selects or requests a plan/top-up.
-2. System creates a pending billing request or invoice.
-3. Backend converts IDR price to expected USDT amount using the configured exchange-rate API.
-4. Backend stores wallet address, expected amount, TRC20 network, expiry, and verification status.
-5. Customer sees the wallet address and QR code.
-6. Customer sends USDT on TRC20.
-7. Customer submits the TRON transaction hash.
-8. Backend checks the transaction on TRON.
-9. Backend marks the payment as paid.
-10. Plan subscription or top-up credits become active.
-11. Customer receives a billing notification.
+2. Backend creates a local pending billing request.
+3. Backend creates a NOWPayments invoice using the local payment reference.
+4. Backend stores NOWPayments invoice/payment IDs, checkout URL, provider status, and payload.
+5. Customer opens the NOWPayments checkout page.
+6. Customer pays using the provider checkout.
+7. NOWPayments detects and confirms the payment.
+8. NOWPayments sends an IPN/webhook to our backend.
+9. Backend verifies the IPN signature and checks amount/currency/reference.
+10. Backend marks the payment as paid.
+11. Plan subscription or top-up credits become active.
+12. Customer receives a billing notification.
 
 Recommended crypto payment details to show:
 
 - Amount due.
-- USDT TRC20 wallet address.
-- Wallet QR code.
-- TRC/TRC20 network label.
-- Tronscan transaction link when a transaction hash is available.
-- Submitted transaction hash.
+- NOWPayments checkout URL.
+- Provider payment ID or invoice ID.
+- Provider payment status.
+- Transaction hash/Tronscan link when NOWPayments returns one.
 - Payment reference or invoice code.
 - Payment expiry time.
-- Pending confirmation status.
+- Pending/confirmed provider status.
 
 Still to confirm:
 
-- Production TRON API provider and rate limits.
+- NOWPayments production API key and IPN secret.
 
 ### Customer Billing Page Additions
 
@@ -223,7 +224,7 @@ Admin capabilities:
 - View top-up balances.
 - Create or approve top-ups.
 - Mark crypto payments as paid after verification.
-- Refresh/check pending TRC20 payment status after a transaction hash is submitted.
+- Refresh/check pending NOWPayments provider status.
 - Mark payment requests as rejected/cancelled.
 - Adjust billing status if needed.
 - Expire stale top-ups.
@@ -283,7 +284,7 @@ Future payment notifications:
 
 - Payment pending.
 - Crypto payment instructions generated.
-- TRC20 transaction detected and verified.
+- NOWPayments payment detected and verified.
 - Payment rejected.
 - Plan activated.
 - Plan changed.
@@ -354,7 +355,7 @@ Recommended crypto payment fields:
 - Payment request ID.
 - Fiat amount, for example IDR amount due.
 - Crypto asset, for example USDT, BTC, ETH, or another supported asset.
-- Crypto network. V1 uses TRC/TRC20 only.
+- Crypto network or provider pay currency. V1 uses NOWPayments with `USDTTRC20`.
 - Expected crypto amount.
 - Received crypto amount.
 - Wallet address.
@@ -364,13 +365,34 @@ Recommended crypto payment fields:
 - Payment expires at.
 - Confirmed by admin user ID.
 - Confirmed at.
-- Provider, for example `tron_self_custody`.
+- Provider, for example `nowpayments`.
 - Provider payment ID, if added later.
 - Provider checkout URL, only for future gateway providers.
 - Provider status.
 - Provider verification payload.
 - Paid at.
 - Expired at.
+
+NOWPayments checkout URL rules:
+
+- Production invoice links use `https://nowpayments.io/payment/?iid={invoice_id}`.
+- Sandbox invoice links use `https://sandbox.nowpayments.io/payment/?iid={invoice_id}`.
+- Local plan and top-up prices remain stored as IDR.
+- NOWPayments invoice pricing uses `NOWPAYMENTS_PRICE_CURRENCY`, default `USDTTRC20`, because NOWPayments may reject `IDR` as an invoice `price_currency`.
+- This means local IDR plan/top-up prices are converted directly into USDT TRC20 for checkout.
+- The backend stores the converted provider price snapshot on the payment request and uses that saved value when verifying NOWPayments IPN callbacks.
+- When NOWPayments returns an invoice ID but no checkout URL, the backend builds the checkout URL from `NOWPAYMENTS_CHECKOUT_URL_TEMPLATE`.
+- If `NOWPAYMENTS_CHECKOUT_URL_TEMPLATE` is not set, the backend now chooses the sandbox checkout domain automatically when `NOWPAYMENTS_API_BASE_URL` contains `sandbox`.
+
+Recommended sandbox env:
+
+```env
+AI_BILLING_PAYMENT_PROVIDER=nowpayments
+NOWPAYMENTS_API_BASE_URL=https://api-sandbox.nowpayments.io/v1
+NOWPAYMENTS_CHECKOUT_URL_TEMPLATE=https://sandbox.nowpayments.io/payment/?iid={id}
+NOWPAYMENTS_PRICE_CURRENCY=USDTTRC20
+NOWPAYMENTS_PAY_CURRENCY=USDTTRC20
+```
 
 ### Billing Cycle Rules
 
@@ -417,7 +439,6 @@ Customer/account admin APIs:
 - Get current billing summary.
 - Request plan upgrade/change.
 - Request top-up.
-- Submit TRON transaction hash for a pending payment request.
 - View payment requests.
 - View usage history.
 
@@ -426,8 +447,8 @@ Admin APIs:
 - List billing accounts.
 - Show account billing detail.
 - Assign/change account plan.
-- Review TRC20 payment status.
-- Reconcile submitted TRON transaction hashes if needed.
+- Review NOWPayments payment status.
+- Reconcile pending payments by refreshing NOWPayments status if needed.
 - Activate top-up.
 - Expire top-up.
 - View usage logs.
@@ -443,7 +464,7 @@ Customer billing page:
 - Billing cycle information.
 - Request upgrade action.
 - Request top-up action.
-- USDT TRC20 wallet, QR code, amount, expiry, and transaction hash field for pending upgrade/top-up payments.
+- NOWPayments Pay Now button, checkout URL, amount, expiry, and provider status for pending upgrade/top-up payments.
 - Payment status table.
 
 Admin billing UI:
@@ -451,10 +472,9 @@ Admin billing UI:
 - Plans table.
 - Account billing table.
 - Account detail drawer/page.
-- TRC20 payment status controls.
-- TRC20 payment refresh/reconciliation action.
-- Wallet, expected amount, transaction hash, and Tronscan fields.
-- Wallet QR code.
+- NOWPayments payment status controls.
+- NOWPayments refresh/reconciliation action.
+- Checkout URL, provider payment ID, provider status, transaction hash, and Tronscan fields when available.
 - Top-up management controls.
 - Top-up expiry action.
 - Usage logs and quota status.
@@ -477,11 +497,11 @@ Recommended access:
 
 ### Payment Provider Compatibility
 
-V1 will use self-custody USDT TRC20 first, while keeping the data model compatible with payment providers later.
+V1 will use NOWPayments first, while keeping the data model compatible with other payment providers later.
 
 Keep compatibility for:
 
-- Self-custody TRC20 verification.
+- NOWPayments invoice checkout and IPN/webhook verification.
 - Crypto payment providers/APIs.
 - Stripe.
 - PayPal.
@@ -490,7 +510,7 @@ Keep compatibility for:
 Design recommendation:
 
 - Keep subscription, invoice/payment request, crypto payment record, and product/plan concepts separate from admin approval.
-- Store provider/gateway fields as nullable so self-custody verification can work now and other payment providers can be added later.
+- Store provider/gateway fields as nullable so NOWPayments can work now and other payment providers can be added later.
 
 ### Out Of Scope For V1
 
@@ -516,7 +536,7 @@ The following decisions still need final answers:
 1. Whether account admins can cancel pending requests.
 2. Whether admins can manually adjust usage counts.
 3. Whether expired top-up credits should remain visible in billing history.
-4. Production TRON API provider and rate limits.
+4. NOWPayments production API key/IPN secret and account approval.
 
 ## Agreed Decisions Log
 
@@ -527,13 +547,13 @@ The following decisions still need final answers:
 - Monthly plan credits are consumed before top-up credits.
 - AI stops only after monthly credits and valid top-up credits are exhausted.
 - Human agents can continue replying after AI quota is exhausted.
-- Payment method for upgrades, renewals, and top-ups will be self-custody USDT TRC20.
-- All payments use TRC/TRC20 network.
-- IDR prices convert to crypto at request time using a configurable exchange-rate API.
-- V1 verifies submitted TRON transaction hashes through the TRON API.
-- Admins can refresh/check pending TRC20 payment status after a transaction hash is submitted.
+- Payment method for upgrades, renewals, and top-ups will be NOWPayments checkout.
+- Preferred NOWPayments pay currency is `USDTTRC20`.
+- IDR prices are sent to NOWPayments; NOWPayments handles the checkout crypto amount.
+- V1 verifies NOWPayments IPN/webhook signatures before activating billing.
+- Admins can refresh/check pending provider status from the admin billing page.
 - Payment requests expire after 24 hours.
-- Customers should see the wallet address, QR code, expected USDT amount, and transaction hash field after submitting the payment request.
+- Customers should see the Pay Now button, checkout URL, payment reference, amount, expiry, and provider status after submitting the payment request.
 - Customers do not upload proof of payment inside the app.
 - Email billing notifications are not needed for V1.
 - Usage counts only successful AI replies.

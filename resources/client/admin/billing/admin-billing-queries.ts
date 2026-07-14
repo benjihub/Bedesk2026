@@ -69,18 +69,6 @@ export const adminBillingQueries = {
     }),
 };
 
-export function confirmAdminBillingPayment(paymentRequestId: number) {
-  return apiClient
-    .post<{
-      paymentRequest: PaymentRequest;
-      billing: BillingSummary;
-    }>(
-      `helpdesk/admin/billing/payment-requests/${paymentRequestId}/confirm`,
-      {},
-    )
-    .then(response => response.data);
-}
-
 export function rejectAdminBillingPayment(paymentRequestId: number) {
   return apiClient
     .post<{

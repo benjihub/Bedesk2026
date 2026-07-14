@@ -1,7 +1,6 @@
 import {
   AdminBillingAccount,
   adminBillingQueries,
-  confirmAdminBillingPayment,
   expireAdminBillingTopUp,
   rejectAdminBillingPayment,
   reconcileAdminBillingPayment,
@@ -97,7 +96,7 @@ export function Component() {
               <Trans message="Billing Admin" />
             </h1>
             <div className="mt-4 text-sm text-muted">
-              <Trans message="Monitor accounts, TRC20 payments, usage, and top-ups." />
+              <Trans message="Monitor accounts, NOWPayments payments, usage, and top-ups." />
             </div>
           </div>
           <IconButton
@@ -175,7 +174,7 @@ export function Component() {
             <AdminPanel>
               <PanelHeader
                 icon={<PaymentsIcon />}
-                title={<Trans message="Pending TRC20 Payments" />}
+                title={<Trans message="Pending Payments" />}
                 description={
                   <Trans message="Submitted hashes, wallet details, and TRON verification" />
                 }
@@ -322,7 +321,7 @@ function PendingPayments({
   if (!payments.length) {
     return (
       <div className="mt-16 rounded-panel border border-divider bg-alt/30 px-14 py-18 text-sm text-muted">
-        <Trans message="No pending TRC20 payments for this account." />
+        <Trans message="No pending payments for this account." />
       </div>
     );
   }
@@ -347,7 +346,6 @@ function PendingPaymentCard({
   accountId: number;
   payment: PaymentRequest;
 }) {
-  const confirmPayment = useAdminPaymentMutation('confirm', accountId);
   const rejectPayment = useAdminPaymentMutation('reject', accountId);
   const reconcilePayment = useAdminPaymentMutation('reconcile', accountId);
 
@@ -363,10 +361,10 @@ function PendingPaymentCard({
                 <ProviderStatusChip status={payment.provider?.status ?? null} />
               </div>
               <div className="mt-3 text-[11px] text-muted">
-                {payment.reference} · {payment.provider?.name || 'TRC20 wallet'}
+                {payment.reference} · {payment.provider?.name || 'NOWPayments'}
               </div>
               <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-[11px] text-muted">
-                <span>{payment.crypto?.network || 'TRC20'}</span>
+                <span>{payment.provider?.status || payment.status}</span>
                 {payment.crypto?.expiresAt ? (
                   <span>{formatDateTime(payment.crypto.expiresAt)}</span>
                 ) : null}
@@ -403,33 +401,18 @@ function PendingPaymentCard({
             variant="outline"
             startIcon={<RefreshIcon />}
             disabled={
-              confirmPayment.isPending ||
               rejectPayment.isPending ||
               reconcilePayment.isPending
             }
             onClick={() => reconcilePayment.mutate(payment.id)}
           >
-            <Trans message="Check TRON" />
-          </Button>
-          <Button
-            size="xs"
-            color="positive"
-            variant="flat"
-            disabled={
-              confirmPayment.isPending ||
-              rejectPayment.isPending ||
-              reconcilePayment.isPending
-            }
-            onClick={() => confirmPayment.mutate(payment.id)}
-          >
-            <Trans message="Confirm" />
+            <Trans message="Refresh" />
           </Button>
           <Button
             size="xs"
             color="danger"
             variant="outline"
             disabled={
-              confirmPayment.isPending ||
               rejectPayment.isPending ||
               reconcilePayment.isPending
             }
@@ -460,7 +443,7 @@ function AdminPaymentDetailsDialog({payment}: {payment: PaymentRequest}) {
   return (
     <Dialog size="md">
       <DialogHeader>
-        <Trans message="TRC20 Payment Details" />
+        <Trans message="Payment Details" />
       </DialogHeader>
       <DialogBody>
         <div className="grid gap-14 sm:grid-cols-[84px_minmax(0,1fr)]">
@@ -476,8 +459,8 @@ function AdminPaymentDetailsDialog({payment}: {payment: PaymentRequest}) {
                 }
               />
               <InfoPair
-                label={<Trans message="Network" />}
-                value={payment.crypto?.network || 'TRC20'}
+                label={<Trans message="Provider" />}
+                value={payment.provider?.name || 'NOWPayments'}
               />
               <InfoPair
                 label={<Trans message="Expires" />}
@@ -494,13 +477,31 @@ function AdminPaymentDetailsDialog({payment}: {payment: PaymentRequest}) {
             </div>
             <div className="mt-10 rounded border border-divider bg-alt/20 px-10 py-8">
               <InfoPair
-                label={<Trans message="Wallet" />}
-                value={payment.crypto?.walletAddress || '-'}
+                label={<Trans message="Provider checkout" />}
+                value={
+                  payment.provider?.checkoutUrl || payment.provider?.invoiceUrl ? (
+                    <a
+                      className="inline-flex items-center gap-4 break-all text-primary hover:underline"
+                      href={
+                        payment.provider.checkoutUrl ||
+                        payment.provider.invoiceUrl ||
+                        undefined
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Trans message="Open checkout" />
+                      <OpenInNewIcon size="xs" />
+                    </a>
+                  ) : (
+                    '-'
+                  )
+                }
               />
             </div>
             <div className="mt-10 rounded border border-divider bg-alt/20 px-10 py-8">
               <InfoPair
-                label={<Trans message="Tx hash" />}
+                label={<Trans message="Transaction hash" />}
                 value={
                   payment.crypto?.scannerUrl ? (
                     <a
@@ -760,14 +761,12 @@ function UsageLedgerPanel({billing}: {billing?: BillingSummary}) {
 }
 
 function useAdminPaymentMutation(
-  action: 'confirm' | 'reject' | 'reconcile',
+  action: 'reject' | 'reconcile',
   accountId: number,
 ) {
   return useMutation({
     mutationFn: (paymentRequestId: number) =>
-      action === 'confirm'
-        ? confirmAdminBillingPayment(paymentRequestId)
-        : action === 'reject'
+      action === 'reject'
           ? rejectAdminBillingPayment(paymentRequestId)
           : reconcileAdminBillingPayment(paymentRequestId),
     onSuccess: async () => {
@@ -780,9 +779,7 @@ function useAdminPaymentMutation(
         }),
       ]);
       toast(
-        action === 'confirm'
-          ? message('Payment confirmed')
-          : action === 'reject'
+        action === 'reject'
             ? message('Payment rejected')
             : message('Payment status refreshed'),
       );

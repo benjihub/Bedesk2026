@@ -53,6 +53,12 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'v1'], function() {
+    Route::post('billing/nowpayments/ipn', [AiBillingController::class, 'nowPaymentsIpn'])
+        ->withoutMiddleware([
+            VerifyCsrfToken::class,
+            'verifyApiAccess',
+        ]);
+
     Route::group(['middleware' => ['optionalAuth:sanctum', 'verified', 'verifyApiAccess']], function () {
         // AGENT CONVERSATIONS
         Route::get('helpdesk/agent/conversations', [AgentConversationsController::class, 'index']);
@@ -150,11 +156,10 @@ Route::group(['prefix' => 'v1'], function() {
         Route::get('helpdesk/billing/payment-history', [AiBillingController::class, 'paymentHistory']);
         Route::post('helpdesk/billing/request-plan', [AiBillingController::class, 'requestPlan']);
         Route::post('helpdesk/billing/request-top-up', [AiBillingController::class, 'requestTopUp']);
-        Route::post('helpdesk/billing/payment-requests/{paymentRequestId}/transaction', [AiBillingController::class, 'submitTransaction']);
         Route::post('helpdesk/billing/payment-requests/{paymentRequestId}/cancel', [AiBillingController::class, 'cancelPaymentRequest']);
+        Route::post('helpdesk/billing/payment-requests/{paymentRequestId}/reconcile', [AiBillingController::class, 'reconcileOwnPayment']);
         Route::get('helpdesk/admin/billing/accounts', [AiBillingController::class, 'adminAccounts']);
         Route::get('helpdesk/admin/billing/accounts/{accountId}', [AiBillingController::class, 'adminAccountSummary']);
-        Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/confirm', [AiBillingController::class, 'confirmPayment']);
         Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/reject', [AiBillingController::class, 'rejectPayment']);
         Route::post('helpdesk/admin/billing/payment-requests/{paymentRequestId}/reconcile', [AiBillingController::class, 'reconcilePayment']);
         Route::post('helpdesk/admin/billing/top-ups/{topUpId}/expire', [AiBillingController::class, 'expireTopUp']);

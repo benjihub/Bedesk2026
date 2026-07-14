@@ -8,13 +8,13 @@ use App\Billing\Models\AiBillingTopUp;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class AiBillingPaymentRequestService
 {
     public function __construct(
-        private CryptoExchangeRateService $exchangeRates,
-        private TronSelfCustodyPaymentService $tronPayments,
+        private NowPaymentsService $nowPayments,
         private AiBillingNotificationService $notifications,
     ) {
     }
@@ -127,70 +127,44 @@ class AiBillingPaymentRequestService
             'status' => 'pending',
             'currency' => 'IDR',
             'reference' => $this->reference(),
-            'crypto_asset' => config('ai-billing.crypto_asset'),
-            'crypto_network' => config('ai-billing.crypto_network'),
-            'wallet_address' => config('ai-billing.crypto_wallet_address'),
+            'crypto_asset' => 'USDT',
+            'crypto_network' => 'TRC20',
             'expires_at' => now()->addHours(
                 config('ai-billing.payment_request_expiry_hours'),
             ),
         ]);
 
-        $quote = $this->exchangeRates->quote(
-            (int) $paymentRequest->amount,
-            $paymentRequest->currency,
-            config('ai-billing.crypto_asset', 'USDT'),
-        );
-
-        $expectedAmount = $this->uniqueExpectedCryptoAmount(
-            (string) $quote['amount'],
-            $paymentRequest,
-        );
+        $invoice = $this->nowPayments->createInvoice($paymentRequest);
 
         $paymentRequest->update([
-            'expected_crypto_amount' => $expectedAmount,
-            'crypto_asset' => $quote['asset'],
-            'crypto_network' => config('ai-billing.crypto_network', 'TRC20'),
-            'provider' => config(
-                'ai-billing.payment_provider',
-                'tron_self_custody',
-            ),
-            'provider_status' => 'awaiting_transaction',
+            'expected_crypto_amount' => $invoice['payAmount'] ?? null,
+            'crypto_asset' => 'USDT',
+            'crypto_network' => 'TRC20',
+            'wallet_address' => $invoice['payAddress'] ?? null,
+            'provider' => config('ai-billing.payment_provider', 'nowpayments'),
+            'provider_payment_id' => $invoice['paymentId'],
+            'provider_prepay_id' => $invoice['invoiceId'],
+            'provider_status' => $invoice['status'],
+            'provider_invoice_url' => $invoice['invoiceUrl'],
+            'provider_checkout_url' => $invoice['checkoutUrl'],
             'provider_payload' => [
-                'exchangeRate' => $quote,
-                'uniqueAmount' => [
-                    'baseAmount' => $quote['amount'],
-                    'expectedAmount' => $expectedAmount,
-                    'strategy' => 'rounded_up_plus_unique_cents',
-                    'exactAmountRequired' => true,
+                'nowPaymentsPricing' => [
+                    'priceAmount' => $invoice['priceAmount'] ?? null,
+                    'priceCurrency' => $invoice['priceCurrency'] ?? null,
+                    'priceRate' => $invoice['priceRate'] ?? null,
+                    'priceSource' => $invoice['priceSource'] ?? null,
+                    'localAmount' => $paymentRequest->amount,
+                    'localCurrency' => $paymentRequest->currency,
                 ],
+                'nowPaymentsInvoice' => $invoice['payload'],
             ],
+            'notes' => 'NOWPayments checkout created',
         ]);
 
         $paymentRequest = $paymentRequest->fresh('plan');
         $this->notifications->paymentCreated($paymentRequest);
 
         return $paymentRequest;
-    }
-
-    public function submitTransaction(
-        AiBillingPaymentRequest $paymentRequest,
-        string $transactionHash,
-    ): AiBillingPaymentRequest {
-        if ($paymentRequest->status !== 'pending') {
-            return $paymentRequest;
-        }
-
-        $paymentRequest->update([
-            'transaction_hash' => trim($transactionHash),
-            'provider' => config(
-                'ai-billing.payment_provider',
-                'tron_self_custody',
-            ),
-            'provider_status' => 'transaction_submitted',
-            'notes' => 'TRC20 transaction submitted for verification',
-        ]);
-
-        return $this->reconcilePayment($paymentRequest->fresh('plan'));
     }
 
     public function reconcilePayment(
@@ -205,37 +179,127 @@ class AiBillingPaymentRequestService
                 'status' => 'cancelled',
                 'provider_status' => 'expired',
                 'expired_at' => now(),
-                'notes' => 'TRC20 payment request expired',
+                'notes' => 'NOWPayments payment request expired',
             ]);
 
             return $paymentRequest->fresh('plan');
         }
 
-        if (!$paymentRequest->transaction_hash) {
+        $verification = $this->nowPayments->fetchPaymentStatus($paymentRequest);
+
+        return $this->applyProviderUpdate($paymentRequest, $verification);
+    }
+
+    public function handleNowPaymentsIpn(
+        array $payload,
+        ?string $signature,
+    ): AiBillingPaymentRequest {
+        if (!$this->nowPayments->ipnSignatureIsValid($payload, $signature)) {
+            Log::warning('NOWPayments IPN rejected: invalid signature.', [
+                'orderId' => $payload['order_id'] ?? null,
+                'paymentId' => $payload['payment_id'] ?? null,
+                'invoiceId' => $payload['invoice_id'] ?? $payload['id'] ?? null,
+                'status' => $payload['payment_status'] ?? $payload['status'] ?? null,
+                'hasSignature' => (bool) $signature,
+            ]);
+
+            abort(403, 'Invalid NOWPayments signature.');
+        }
+
+        $paymentRequest = $this->findNowPaymentsRequest($payload);
+        $verification = $this->nowPayments->normalizeProviderPayload(
+            $payload,
+            'NOWPayments IPN received.',
+        );
+
+        return $this->applyProviderUpdate($paymentRequest, $verification);
+    }
+
+    private function applyProviderUpdate(
+        AiBillingPaymentRequest $paymentRequest,
+        array $verification,
+    ): AiBillingPaymentRequest {
+        if (!$this->nowPayments->amountAndCurrencyMatch(
+            $paymentRequest,
+            $verification['payload'] ?? [],
+        )) {
+            Log::warning('NOWPayments payment rejected: amount or currency mismatch.', [
+                'paymentRequestId' => $paymentRequest->id,
+                'reference' => $paymentRequest->reference,
+                'localAmount' => $paymentRequest->amount,
+                'localCurrency' => $paymentRequest->currency,
+                'providerPriceAmount' => data_get(
+                    $paymentRequest->provider_payload,
+                    'nowPaymentsPricing.priceAmount',
+                ),
+                'providerPriceCurrency' => data_get(
+                    $paymentRequest->provider_payload,
+                    'nowPaymentsPricing.priceCurrency',
+                ),
+                'incomingPriceAmount' => data_get(
+                    $verification,
+                    'payload.price_amount',
+                ),
+                'incomingPriceCurrency' => data_get(
+                    $verification,
+                    'payload.price_currency',
+                ),
+            ]);
+
             $paymentRequest->update([
-                'provider_status' => 'awaiting_transaction',
+                'provider_status' => 'amount_mismatch',
+                'provider_payload' => [
+                    ...($paymentRequest->provider_payload ?: []),
+                    'nowPaymentsVerification' => $verification,
+                ],
+                'notes' => 'NOWPayments amount or currency did not match this billing request.',
             ]);
 
             return $paymentRequest->fresh('plan');
         }
-
-        $verification = $this->tronPayments->verify($paymentRequest);
 
         $paymentRequest->update([
-            'provider' => config(
-                'ai-billing.payment_provider',
-                'tron_self_custody',
-            ),
+            'provider' => config('ai-billing.payment_provider', 'nowpayments'),
+            'provider_payment_id' =>
+                $verification['paymentId'] ??
+                $paymentRequest->provider_payment_id,
+            'provider_prepay_id' =>
+                $verification['invoiceId'] ??
+                $paymentRequest->provider_prepay_id,
             'provider_status' => $verification['status'],
+            'expected_crypto_amount' =>
+                $verification['payAmount'] ??
+                $paymentRequest->expected_crypto_amount,
             'received_crypto_amount' =>
                 $verification['receivedAmount'] ??
                 $paymentRequest->received_crypto_amount,
+            'transaction_hash' =>
+                $verification['transactionHash'] ??
+                $paymentRequest->transaction_hash,
+            'wallet_address' =>
+                $verification['payAddress'] ??
+                $paymentRequest->wallet_address,
+            'provider_invoice_url' =>
+                $verification['invoiceUrl'] ??
+                $paymentRequest->provider_invoice_url,
+            'provider_checkout_url' =>
+                $verification['checkoutUrl'] ??
+                $paymentRequest->provider_checkout_url,
             'provider_payload' => [
                 ...($paymentRequest->provider_payload ?: []),
-                'tronVerification' => $verification,
+                'nowPaymentsVerification' => $verification,
             ],
             'notes' => $verification['message'],
         ]);
+
+        if ($verification['failed'] ?? false) {
+            $paymentRequest->update([
+                'status' => 'cancelled',
+                'expired_at' => now(),
+            ]);
+
+            return $paymentRequest->fresh('plan');
+        }
 
         if (
             $paymentRequest->status !== 'paid' &&
@@ -244,13 +308,65 @@ class AiBillingPaymentRequestService
             return $this->confirmPayment(
                 $paymentRequest->fresh('plan'),
                 null,
-                $paymentRequest->transaction_hash,
+                $verification['transactionHash'] ??
+                    $paymentRequest->transaction_hash,
                 $verification['receivedAmount'] ??
                     $paymentRequest->expected_crypto_amount,
             );
         }
 
         return $paymentRequest->fresh('plan');
+    }
+
+    private function findNowPaymentsRequest(array $payload): AiBillingPaymentRequest
+    {
+        $reference = data_get($payload, 'order_id')
+            ?: data_get($payload, 'orderId')
+            ?: data_get($payload, 'data.order_id')
+            ?: data_get($payload, 'data.orderId')
+            ?: data_get($payload, 'payment.order_id')
+            ?: data_get($payload, 'payment.orderId')
+            ?: data_get($payload, 'payments.0.order_id')
+            ?: data_get($payload, 'payments.0.orderId');
+        $paymentId = data_get($payload, 'payment_id')
+            ?: data_get($payload, 'paymentId')
+            ?: data_get($payload, 'data.payment_id')
+            ?: data_get($payload, 'data.paymentId')
+            ?: data_get($payload, 'payment.payment_id')
+            ?: data_get($payload, 'payment.paymentId')
+            ?: data_get($payload, 'payments.0.payment_id')
+            ?: data_get($payload, 'payments.0.paymentId');
+        $invoiceId = data_get($payload, 'invoice_id')
+            ?: data_get($payload, 'invoiceId')
+            ?: data_get($payload, 'id')
+            ?: data_get($payload, 'data.invoice_id')
+            ?: data_get($payload, 'data.invoiceId')
+            ?: data_get($payload, 'data.id')
+            ?: data_get($payload, 'payment.invoice_id')
+            ?: data_get($payload, 'payment.invoiceId')
+            ?: data_get($payload, 'payments.0.invoice_id')
+            ?: data_get($payload, 'payments.0.invoiceId');
+
+        if (!$reference && !$paymentId && !$invoiceId) {
+            abort(404, 'NOWPayments payment request was not found.');
+        }
+
+        return AiBillingPaymentRequest::query()
+            ->with('plan')
+            ->where(function ($query) use ($reference, $paymentId, $invoiceId) {
+                if ($reference) {
+                    $query->orWhere('reference', $reference);
+                }
+
+                if ($paymentId) {
+                    $query->orWhere('provider_payment_id', (string) $paymentId);
+                }
+
+                if ($invoiceId) {
+                    $query->orWhere('provider_prepay_id', (string) $invoiceId);
+                }
+            })
+            ->firstOrFail();
     }
 
     private function reference(): string
@@ -266,57 +382,13 @@ class AiBillingPaymentRequestService
         return $reference;
     }
 
-    private function uniqueExpectedCryptoAmount(
-        string $quotedAmount,
-        AiBillingPaymentRequest $paymentRequest,
-    ): string {
-        $baseCents = (int) ceil(((float) $quotedAmount) * 100);
-        $baseCents = max(1, $baseCents);
-
-        for ($slot = 1; $slot <= 99; $slot++) {
-            $candidate = number_format(
-                ($baseCents + $slot) / 100,
-                2,
-                '.',
-                '',
-            );
-
-            if (!$this->activePendingAmountExists($paymentRequest, $candidate)) {
-                return $candidate;
-            }
-        }
-
-        $fallbackUnits = ((int) ceil(((float) $quotedAmount) * 10000)) +
-            (($paymentRequest->id % 9000) + 1000);
-
-        return number_format($fallbackUnits / 10000, 4, '.', '');
-    }
-
-    private function activePendingAmountExists(
-        AiBillingPaymentRequest $paymentRequest,
-        string $candidate,
-    ): bool {
-        return AiBillingPaymentRequest::where('id', '!=', $paymentRequest->id)
-            ->where('status', 'pending')
-            ->where('crypto_asset', $paymentRequest->crypto_asset)
-            ->where('crypto_network', config('ai-billing.crypto_network', 'TRC20'))
-            ->where('wallet_address', $paymentRequest->wallet_address)
-            ->where('expected_crypto_amount', $candidate)
-            ->where(function ($query) {
-                $query
-                    ->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            })
-            ->exists();
-    }
-
     private function paidNote(AiBillingPaymentRequest $request): string
     {
         if ($request->type === 'Top-Up') {
-            return 'Top-up crypto payment confirmed';
+            return 'Top-up NOWPayments payment confirmed';
         }
 
-        return 'Plan crypto payment confirmed';
+        return 'Plan NOWPayments payment confirmed';
     }
 
     public function isExpiredStatus(?string $status): bool

@@ -1,0 +1,2 @@
+import{D as c}from"./main-Cgl-0cxl.js";import{r as s,ax as i}from"./client-WIaOVJIS.js";function d(){const{leftSidenavStatus:t,setLeftSidenavStatus:e,name:a,isMobileMode:n}=s.useContext(c),r=s.useCallback(()=>{const o=t==="open"?"compact":"open";e(o),i(`${a}.sidenav.compact`,o==="compact")},[t,e,a]);return{leftSidenavStatus:t,toggleLeftSidenav:r,isMobileMode:n}}export{d as u};
+//# sourceMappingURL=use-toggle-dashboard-left-sidebar-DKNoXNZx.js.map

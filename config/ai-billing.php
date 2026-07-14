@@ -1,5 +1,17 @@
 <?php
 
+$nowPaymentsApiBaseUrl = env(
+    'NOWPAYMENTS_API_BASE_URL',
+    'https://api.nowpayments.io/v1',
+);
+
+$nowPaymentsCheckoutUrlTemplate = str_contains(
+    strtolower((string) $nowPaymentsApiBaseUrl),
+    'sandbox',
+)
+    ? 'https://sandbox.nowpayments.io/payment/?iid={id}'
+    : 'https://nowpayments.io/payment/?iid={id}';
+
 return [
     'default_plan_slug' => env('AI_BILLING_DEFAULT_PLAN', 'premium'),
     'top_up_price' => (int) env('AI_BILLING_TOP_UP_PRICE', 2000000),
@@ -9,6 +21,7 @@ return [
         'AI_BILLING_PAYMENT_EXPIRY_HOURS',
         24,
     ),
+    'payment_reconcile_limit' => (int) env('AI_BILLING_RECONCILE_LIMIT', 50),
     'crypto_asset' => env('AI_BILLING_CRYPTO_ASSET', 'USDT'),
     'crypto_network' => env('AI_BILLING_CRYPTO_NETWORK', 'TRC20'),
     'crypto_wallet_address' => env('AI_BILLING_CRYPTO_WALLET_ADDRESS', ''),
@@ -18,8 +31,23 @@ return [
     ),
     'payment_provider' => env(
         'AI_BILLING_PAYMENT_PROVIDER',
-        'tron_self_custody',
+        'nowpayments',
     ),
+    'nowpayments' => [
+        'api_base_url' => $nowPaymentsApiBaseUrl,
+        'api_key' => env('NOWPAYMENTS_API_KEY', ''),
+        'ipn_secret' => env('NOWPAYMENTS_IPN_SECRET', ''),
+        'ipn_callback_url' => env('NOWPAYMENTS_IPN_CALLBACK_URL', ''),
+        'success_url' => env('NOWPAYMENTS_SUCCESS_URL', ''),
+        'cancel_url' => env('NOWPAYMENTS_CANCEL_URL', ''),
+        'price_currency' => env('NOWPAYMENTS_PRICE_CURRENCY', 'USDTTRC20'),
+        'pay_currency' => env('NOWPAYMENTS_PAY_CURRENCY', 'USDTTRC20'),
+        'checkout_url_template' => env(
+            'NOWPAYMENTS_CHECKOUT_URL_TEMPLATE',
+            $nowPaymentsCheckoutUrlTemplate,
+        ),
+        'timeout' => (int) env('NOWPAYMENTS_TIMEOUT', 30),
+    ],
     'exchange_rate' => [
         'url' => env(
             'AI_BILLING_EXCHANGE_RATE_URL',
@@ -42,6 +70,11 @@ return [
         ),
         'usdt_contract_hex' => env('TRON_USDT_CONTRACT_HEX', ''),
         'usdt_decimals' => (int) env('TRON_USDT_DECIMALS', 6),
+        'scan_limit' => (int) env('AI_BILLING_TRON_SCAN_LIMIT', 200),
+        'scan_pending_limit' => (int) env(
+            'AI_BILLING_TRON_SCAN_PENDING_LIMIT',
+            50,
+        ),
         'request_qr_size' => (int) env('AI_BILLING_PAYMENT_QR_SIZE', 180),
     ],
 ];

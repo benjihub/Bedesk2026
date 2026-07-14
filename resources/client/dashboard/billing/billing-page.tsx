@@ -11,7 +11,6 @@ import {
   cancelBillingPaymentRequest,
   requestPlan,
   requestTopUp,
-  submitBillingPaymentTransaction,
 } from '@app/dashboard/billing/requests/billing-queries';
 import {DatatablePageHeaderBar} from '@common/datatable/page/datatable-page-with-header-layout';
 import {queryClient} from '@common/http/query-client';
@@ -19,7 +18,6 @@ import {StaticPageTitle} from '@common/seo/static-page-title';
 import {useMutation, useQuery} from '@tanstack/react-query';
 import {Button} from '@ui/buttons/button';
 import {Chip} from '@ui/forms/input-field/chip-field/chip';
-import {TextField} from '@ui/forms/input-field/text-field/text-field';
 import {FormattedNumber} from '@ui/i18n/formatted-number';
 import {message} from '@ui/i18n/message';
 import {Trans} from '@ui/i18n/trans';
@@ -45,7 +43,7 @@ import {DialogTrigger} from '@ui/overlays/dialog/dialog-trigger';
 import {ProgressBar} from '@ui/progress/progress-bar';
 import {toast} from '@ui/toast/toast';
 import clsx from 'clsx';
-import {Fragment, ReactNode, useState} from 'react';
+import {Fragment, ReactNode} from 'react';
 import {Link} from 'react-router';
 
 export function Component() {
@@ -619,7 +617,7 @@ function PaymentStatusCard({billingSummary}: {billingSummary: BillingSummary}) {
       <CardHeader
         icon={<PaymentsIcon />}
         title={<Trans message="Payments" />}
-        description={<Trans message="USDT TRC20" />}
+        description={<Trans message="NOWPayments checkout" />}
         action={<PaymentStatusChip status={billingSummary.account.status} />}
       />
 
@@ -655,7 +653,7 @@ function BillingActivityCard({
         description={<Trans message="Recent billing notifications" />}
       />
       {billingSummary.notifications?.length ? (
-        <div className="mt-18 flex flex-col gap-10">
+        <div className="mt-12 flex flex-col gap-6">
           {billingSummary.notifications.map(notification => (
             <BillingNotificationRow
               key={notification.id}
@@ -664,7 +662,7 @@ function BillingActivityCard({
           ))}
         </div>
       ) : (
-        <div className="mt-18 rounded-panel border border-divider bg-alt/30 px-14 py-12 text-sm text-muted">
+        <div className="mt-12 rounded-panel border border-divider bg-alt/30 px-10 py-8 text-xs text-muted">
           <Trans message="No billing notifications yet." />
         </div>
       )}
@@ -678,22 +676,24 @@ function BillingNotificationRow({
   notification: BillingNotification;
 }) {
   return (
-    <div className="grid gap-10 rounded-panel border border-divider bg-alt/30 px-14 py-12 sm:grid-cols-[28px_minmax(0,1fr)_90px] sm:items-start">
+    <div className="grid gap-7 rounded-panel border border-divider bg-alt/30 px-10 py-8 sm:grid-cols-[22px_minmax(0,1fr)_76px] sm:items-start">
       <span
         className={clsx(
-          'flex size-28 flex-shrink-0 items-center justify-center rounded-full',
+          'flex size-22 flex-shrink-0 items-center justify-center rounded-full',
           alertIconBgClassName(notification.tone),
         )}
       >
         <AlertIcon tone={notification.tone} />
       </span>
       <div className="min-w-0">
-        <div className="font-medium">{notification.title}</div>
-        <div className="mt-3 text-xs leading-relaxed text-muted">
+        <div className="text-xs font-medium leading-snug">
+          {notification.title}
+        </div>
+        <div className="mt-2 text-[11px] leading-snug text-muted">
           {notification.message}
         </div>
       </div>
-      <div className="text-xs text-muted sm:text-right">
+      <div className="text-[11px] text-muted sm:text-right">
         {notification.notifiedAt ? formatDate(notification.notifiedAt) : null}
       </div>
     </div>
@@ -806,7 +806,7 @@ function CryptoInstructionSummary({request}: {request: PaymentRequest}) {
         </span>
       ) : null}
       <span>
-        <Trans message="Network" /> {request.crypto.network || 'TRC20'}
+        <Trans message="Provider" /> {request.provider.name || 'NOWPayments'}
       </span>
       <TransactionScannerLink request={request} />
     </div>
@@ -856,7 +856,7 @@ function PaymentRequestRow({request, compact}: PaymentRequestRowProps) {
         </div>
         <div className="mt-2 flex flex-wrap gap-x-10 gap-y-2 text-xs text-muted">
           <span>
-            <Trans message="Network" /> {request.crypto.network || 'TRC20'}
+            <Trans message="Provider" /> {request.provider.name || 'NOWPayments'}
           </span>
           <TransactionScannerLink request={request} />
         </div>
@@ -906,12 +906,12 @@ function PaymentDetailsDialog({request}: {request: PaymentRequest}) {
   const cancelRequest = useCancelPaymentRequest();
 
   return (
-    <Dialog size="md">
+    <Dialog size="lg">
       <DialogHeader>
-        <Trans message="TRC20 Payment Details" />
+        <Trans message="Payment Details" />
       </DialogHeader>
       <DialogBody>
-        <SelfCustodyPaymentBox request={request} />
+        <NowPaymentsPaymentBox request={request} />
       </DialogBody>
       <DialogFooter>
         <Button
@@ -941,94 +941,144 @@ function PaymentDetailsDialog({request}: {request: PaymentRequest}) {
   );
 }
 
-function SelfCustodyPaymentBox({request}: {request: PaymentRequest}) {
-  const [transactionHash, setTransactionHash] = useState(
-    request.crypto.transactionHash || '',
-  );
-  const mutation = useMutation({
-    mutationFn: () =>
-      submitBillingPaymentTransaction(request.id, transactionHash.trim()),
-    onSuccess: async response => {
-      queryClient.setQueryData(billingQueries.summaryKey, {
-        billing: response.billing,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: billingQueries.summaryKey,
-      });
-      toast.positive(
-        response.paymentRequest.status === 'paid'
-          ? message('Payment verified')
-          : message('Transaction submitted for verification'),
-      );
-    },
-    onError: error => {
-      toast.danger(billingRequestErrorMessage(error));
-    },
-  });
+function NowPaymentsPaymentBox({request}: {request: PaymentRequest}) {
+  const checkoutUrl =
+    request.provider.checkoutUrl || request.provider.invoiceUrl;
+  const providerId = request.provider.paymentId || request.provider.prepayId;
 
   return (
-    <div className="rounded-panel border border-divider bg-alt/20 p-10">
-      <div className="grid gap-12 sm:grid-cols-[84px_minmax(0,1fr)]">
-        <div className="flex items-start">
-          <PaymentQrCode request={request} />
-        </div>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-8">
-            <div>
-              <div className="text-[11px] font-medium uppercase text-muted">
-                <Trans message="Send" />
-              </div>
-              <div className="mt-1 text-sm font-semibold leading-tight">
-                {request.crypto.expectedAmount || '-'}{' '}
-                {request.crypto.asset || 'USDT'}
-              </div>
+    <div className="rounded-panel border border-divider bg-surface">
+      <div className="border-b border-divider px-14 py-12">
+        <div className="flex flex-wrap items-start justify-between gap-10">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-8">
+              <div className="text-sm font-semibold">{request.type}</div>
+              <RequestStatusChip status={request.status} />
             </div>
-            <Chip color="chip" size="xs">
-              {request.crypto.network || 'TRC20'}
-            </Chip>
+            <div className="mt-3 break-all font-mono text-[11px] text-muted">
+              {request.reference}
+            </div>
           </div>
-          <div className="mt-7 min-w-0 rounded border border-divider bg-alt/20 px-8 py-6">
+          <div className="text-left sm:text-right">
             <div className="text-[11px] font-medium uppercase text-muted">
-              <Trans message="Wallet" />
+              <Trans message="Amount" />
             </div>
-            <div className="mt-2 break-all font-mono text-[11px] leading-relaxed text-main">
-              {request.crypto.walletAddress || '-'}
+            <div className="mt-1 text-base font-semibold leading-tight">
+              {formatRupiah(request.amount)}
             </div>
           </div>
-          <div className="mt-8 grid gap-6 sm:grid-cols-[minmax(0,1fr)_96px] sm:items-end">
-            <TextField
-              size="sm"
-              label={<Trans message="Tx hash" />}
-              value={transactionHash}
-              maxLength={64}
-              onChange={e => setTransactionHash(e.target.value)}
-            />
-            <Button
-              size="xs"
-              variant="flat"
-              color="primary"
-              disabled={
-                mutation.isPending || transactionHash.trim().length !== 64
-              }
-              onClick={() => mutation.mutate()}
-            >
-              {mutation.isPending ? (
-                <Trans message="Checking..." />
-              ) : (
-                <Trans message="Submit" />
-              )}
-            </Button>
-          </div>
-          <div className="mt-6 rounded bg-alt/30 px-8 py-6 text-xs leading-relaxed text-muted">
-            <Trans message="The tx hash is the 64-character transaction ID from your wallet or exchange after sending USDT on TRC20. Paste it here so we can verify the payment on TRON." />
-          </div>
-          {request.provider?.status &&
-          request.provider.status !== 'awaiting_transaction' ? (
-            <div className="mt-6 text-xs text-muted">
-              <Trans message="Status" />: {request.provider.status}
-            </div>
-          ) : null}
         </div>
+      </div>
+
+      <div className="grid gap-14 p-14 md:grid-cols-[160px_minmax(0,1fr)]">
+        <PaymentCheckoutPanel request={request} checkoutUrl={checkoutUrl} />
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-8">
+            <Chip color="chip" size="xs">
+              {request.provider.name || 'NOWPayments'}
+            </Chip>
+            {request.provider.status ? (
+              <span className="text-xs text-muted">
+                {request.provider.status}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-10 divide-y divide-divider rounded border border-divider">
+            <PaymentDetailRow
+              label={<Trans message="Currency" />}
+              value={request.currency}
+            />
+            <PaymentDetailRow
+              label={<Trans message="Expires" />}
+              value={
+                request.crypto.expiresAt
+                  ? formatDateTime(request.crypto.expiresAt)
+                  : '-'
+              }
+            />
+            {providerId ? (
+              <PaymentDetailRow
+                label={<Trans message="Provider ID" />}
+                value={providerId}
+                mono
+              />
+            ) : null}
+            {request.crypto.walletAddress ? (
+              <PaymentDetailRow
+                label={<Trans message="Wallet" />}
+                value={request.crypto.walletAddress}
+                mono
+              />
+            ) : null}
+          </div>
+
+          <div className="mt-10 rounded bg-alt/30 px-10 py-8 text-xs leading-relaxed text-muted">
+            <Trans message="Payment activates automatically after NOWPayments confirms it." />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentCheckoutPanel({
+  request,
+  checkoutUrl,
+}: {
+  request: PaymentRequest;
+  checkoutUrl: string | null;
+}) {
+  return (
+    <div className="flex flex-col items-start gap-10">
+      <div className="flex min-h-120 w-full items-center justify-center rounded-panel border border-divider bg-alt/20 p-10">
+        <PaymentQrCode request={request} />
+      </div>
+      <div className="w-full">
+        {checkoutUrl ? (
+          <Button
+            className="w-full"
+            elementType="a"
+            href={checkoutUrl}
+            target="_blank"
+            rel="noreferrer"
+            size="sm"
+            color="primary"
+            variant="flat"
+            endIcon={<OpenInNewIcon size="xs" />}
+          >
+            <Trans message="Pay Now" />
+          </Button>
+        ) : (
+          <Chip color="chip" size="sm">
+            <Trans message="Checkout link pending" />
+          </Chip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PaymentDetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="grid gap-3 px-10 py-7 text-xs sm:grid-cols-[96px_minmax(0,1fr)]">
+      <div className="font-medium text-muted">{label}</div>
+      <div
+        className={clsx(
+          'min-w-0 break-words text-main',
+          mono && 'break-all font-mono text-[11px] leading-relaxed',
+        )}
+      >
+        {value}
       </div>
     </div>
   );
@@ -1037,12 +1087,21 @@ function SelfCustodyPaymentBox({request}: {request: PaymentRequest}) {
 function PaymentQrCode({request}: {request: PaymentRequest}) {
   const qrCodeUrl = request.provider?.qrCodeUrl;
   if (!qrCodeUrl || !isImageUrl(qrCodeUrl)) {
-    return null;
+    return (
+      <div className="flex flex-col items-center gap-6 text-center text-muted">
+        <span className="flex size-46 items-center justify-center rounded-full bg-chip">
+          <PaymentsIcon size="md" />
+        </span>
+        <div className="text-[11px] leading-snug">
+          <Trans message="Open checkout to complete payment." />
+        </div>
+      </div>
+    );
   }
 
   return (
     <img
-      className="size-72 rounded-panel border border-divider bg-white p-3"
+      className="size-[104px] rounded-panel border border-divider bg-white p-3"
       src={qrCodeUrl}
       alt=""
     />
@@ -1072,10 +1131,9 @@ function isImageUrl(value: string): boolean {
 }
 
 function successToastMessage(request: PaymentRequest): string {
-  const asset = request.crypto.asset || 'USDT';
-  const network = request.crypto.network || 'TRC20';
-
-  return `Payment request created. Send ${asset} on ${network}.`;
+  return request.provider.checkoutUrl || request.provider.invoiceUrl
+    ? 'Payment request created. Open NOWPayments checkout to pay.'
+    : 'Payment request created.';
 }
 
 function billingRequestErrorMessage(error: unknown): string {

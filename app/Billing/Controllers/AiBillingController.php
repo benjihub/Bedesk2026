@@ -11,6 +11,7 @@ use Common\Core\BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AiBillingController extends BaseController
 {
@@ -101,36 +102,25 @@ class AiBillingController extends BaseController
         );
     }
 
-    public function submitTransaction(int $paymentRequestId, Request $request)
+    public function nowPaymentsIpn(Request $request)
     {
-        $this->authorizeBillingAccess();
-
-        $data = $request->validate([
-            'transactionHash' => [
-                'required',
-                'string',
-                'size:64',
-                'regex:/^[A-Fa-f0-9]+$/',
-            ],
+        Log::info('NOWPayments IPN received.', [
+            'orderId' => $request->input('order_id'),
+            'paymentId' => $request->input('payment_id'),
+            'invoiceId' => $request->input('invoice_id') ?: $request->input('id'),
+            'status' => $request->input('payment_status') ?: $request->input('status'),
+            'hasSignature' => (bool) $request->header('x-nowpayments-sig'),
         ]);
 
-        $account = $this->accountResolver->resolve();
-        $paymentRequest = $account
-            ->paymentRequests()
-            ->with('plan')
-            ->where('status', 'pending')
-            ->findOrFail($paymentRequestId);
-
-        $paymentRequest = $this->paymentRequestService->submitTransaction(
-            $paymentRequest,
-            $data['transactionHash'],
+        $paymentRequest = $this->paymentRequestService->handleNowPaymentsIpn(
+            $request->all(),
+            $request->header('x-nowpayments-sig'),
         );
 
         return $this->success([
-            'paymentRequest' => $this->summaryService->paymentRequest(
-                $paymentRequest->fresh('plan'),
-            ),
-            'billing' => $this->summaryService->build($account->fresh()),
+            'paymentRequestId' => $paymentRequest->id,
+            'status' => $paymentRequest->status,
+            'providerStatus' => $paymentRequest->provider_status,
         ]);
     }
 
@@ -151,6 +141,28 @@ class AiBillingController extends BaseController
             'expired_at' => now(),
             'notes' => 'Payment request cancelled by customer',
         ]);
+
+        return $this->success([
+            'paymentRequest' => $this->summaryService->paymentRequest(
+                $paymentRequest->fresh('plan'),
+            ),
+            'billing' => $this->summaryService->build($account->fresh()),
+        ]);
+    }
+
+    public function reconcileOwnPayment(int $paymentRequestId)
+    {
+        $this->authorizeBillingAccess();
+
+        $account = $this->accountResolver->resolve();
+        $paymentRequest = $account
+            ->paymentRequests()
+            ->with(['account', 'plan'])
+            ->findOrFail($paymentRequestId);
+
+        $paymentRequest = $this->paymentRequestService->reconcilePayment(
+            $paymentRequest,
+        );
 
         return $this->success([
             'paymentRequest' => $this->summaryService->paymentRequest(
@@ -254,36 +266,6 @@ class AiBillingController extends BaseController
 
         return $this->success([
             'billing' => $this->summaryService->build($account),
-        ]);
-    }
-
-    public function confirmPayment(
-        int $paymentRequestId,
-        Request $request,
-    ) {
-        $this->authorizeAdminBillingAccess();
-
-        $data = $request->validate([
-            'transactionHash' => 'nullable|string|max:255',
-            'receivedAmount' => 'nullable|numeric',
-        ]);
-
-        $paymentRequest = AiBillingPaymentRequest::findOrFail(
-            $paymentRequestId,
-        );
-
-        $paymentRequest = $this->paymentRequestService->confirmPayment(
-            $paymentRequest,
-            Auth::user(),
-            $data['transactionHash'] ?? null,
-            $data['receivedAmount'] ?? null,
-        );
-
-        return $this->success([
-            'paymentRequest' => $this->summaryService->paymentRequest(
-                $paymentRequest->fresh('plan'),
-            ),
-            'billing' => $this->summaryService->build($paymentRequest->account),
         ]);
     }
 
